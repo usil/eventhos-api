@@ -1,11 +1,11 @@
-# Microservice Template 1.0.0
+# Eventhos Demo 1.0.0
 
 <img src="./coverage/badge-branches.svg">
 <img src="./coverage/badge-functions.svg">
 <img src="./coverage/badge-lines.svg">
 <img src="./coverage/badge-statements.svg">
 
-A simple template to create a microservice with knexjs with mysql.
+The microservice to use Eventhos.
 
 ## Requirements
 
