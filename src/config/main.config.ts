@@ -1,6 +1,9 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+/* eslint-disable @typescript-eslint/no-var-requires */
 require('dotenv').config();
+const EnvSettings = require('advanced-settings').EnvSettings;
+const envSettings = new EnvSettings();
 
+import path from 'path';
 import bunyan from 'bunyan';
 import pjs from '../../package.json';
 import ConfigGlobalDto from './config.dto';
@@ -12,30 +15,26 @@ const { version } = pjs;
 const getLogger = (serviceName: string, serviceVersion: string) =>
   bunyan.createLogger({ name: `${serviceName}:${serviceVersion}` });
 
+let configuration: Partial<typeof ConfigGlobalDto>;
+
 /**
  * @description Add the config variables here
  */
-const getConfig = () => {
-  const config = ConfigGlobalDto;
+export const getConfig = () => {
+  const settings = envSettings.loadJsonFileSync(
+    path.resolve(__dirname, './settings.json'),
+  );
 
-  config.log = (): bunyan =>
+  configuration = settings;
+
+  configuration.port = parseInt(settings.port);
+
+  configuration.dataBasePort = parseInt(settings.dataBasePort);
+
+  configuration.port = parseInt(settings.port);
+
+  configuration.log = (): bunyan =>
     getLogger(process.env.NODE_ENV.toUpperCase(), version);
 
-  config.port = parseInt(process.env.PORT) || 2000;
-
-  config.state = process.env.NODE_ENV;
-
-  config.dataBaseName = process.env.DATA_BASE_NAME;
-
-  config.dataBaseHost = process.env.DATA_BASE_HOST;
-
-  config.dataBasePassword = process.env.DATA_BASE_PASSWORD;
-
-  config.dataBaseUser = process.env.DATA_BASE_USER;
-
-  config.dataBasePort = parseInt(process.env.DATA_BASE_PORT);
-
-  return config;
+  return configuration;
 };
-
-export default getConfig;

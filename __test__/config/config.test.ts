@@ -1,12 +1,11 @@
-import getConfig from '../../src/config/main.config';
+import { getConfig } from '../../src/config/main.config';
 import bunyan from 'bunyan';
-import { ConfigGlobalDto } from '../../src/config/config.dto';
 
 describe('Correct configuration declaration', () => {
   const configuration = getConfig();
 
   it('Correct environment', () => {
-    expect(configuration).toBeInstanceOf(ConfigGlobalDto);
+    expect(configuration).toBeTruthy();
     expect(configuration.state).toBe('test');
   });
 

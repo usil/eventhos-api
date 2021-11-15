@@ -4,15 +4,16 @@
   "description": "A template to use knex with mysql",
   "main": "./dist/main.js",
   "scripts": {
-    "test": "cross-env NODE_ENV=test jest --verbose --silent --collectCoverage && jest-coverage-badges",
+    "test": "cross-env NODE_ENV=test jest --verbose --silent --collectCoverage  && jest-coverage-badges",
     "test:watch": "npm test -- --watch",
     "start": "cross-env NODE_ENV=production node ./dist/main.js | bunyan",
-    "dev:start": "cross-env NODE_ENV=development npx ts-node-dev ./src/index.ts | bunyan",
+    "dev": "cross-env NODE_ENV=development npx ts-node-dev ./src/index.ts | bunyan",
     "build": "cross-env NODE_ENV=production webpack --config webpack.prod.js"
   },
   "author": "Tac Etarip",
   "license": "ISC",
   "dependencies": {
+    "advanced-settings": "git+https://github.com/nodeboot/advanced-settings.git",
     "bunyan": "^1.8.15",
     "compression": "^1.7.4",
     "cors": "^2.8.5",

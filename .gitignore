@@ -3,7 +3,10 @@ node_modules
 # See http://help.github.com/ignore-files/ for more about ignoring files.
 dist/
 # compiled output
-
+/coverage/lcov-report
+/coverage/lcov-report
+/coverage/coverage-summary.json
+/coverage/lcov.info
 /tmp
 /out-tsc
 # Only exists if Bazel was run
