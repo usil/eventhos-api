@@ -10,46 +10,42 @@ const eventControllers = (knexPool: Knex) => {
     next: NextFunction,
   ) => {
     try {
-      const producerKey = req.query['key'] as string;
-      const producerEventIdentifier = req.query['producer-event'] as string;
+      const systemKey = req.query['access-key'] as string;
+      const eventIdentifier = req.query['event-identifier'] as string;
 
-      if (!producerKey || !producerEventIdentifier) {
+      if (!systemKey || !eventIdentifier) {
         return res.status(400).json({
-          code: 40020,
+          code: 400020,
           message:
-            'Either the access key or the identifier for the producer events was not send.',
+            'Either the access key or the identifier for the event was not send.',
         });
       }
 
-      const producerEvent = (await knexPool('producer_event')
-        .join('producer', 'producer.id', 'producer_event.producer_id')
+      const event = (await knexPool('event')
+        .join('system', 'system.id', 'event.system_id')
         .first()
-        .select(
-          'producer.key',
-          'producer_event.identifier',
-          'producer_event.id',
-        )
-        .where('producer_event.identifier', producerEventIdentifier)) as {
+        .select('system.key', 'event.identifier', 'event.id')
+        .where('event.identifier', eventIdentifier)) as {
         key: string;
         identifier: string;
         id: number;
       };
 
-      if (!producerEvent) {
+      if (!event) {
         return res.status(404).json({
-          code: 40024,
-          message: `The producer ${producerEventIdentifier} does not exist.`,
+          code: 400024,
+          message: `The event ${eventIdentifier} does not exist.`,
         });
       }
 
-      if (producerEvent.key !== producerKey) {
+      if (event.key !== systemKey) {
         return res.status(403).json({
-          code: 40023,
+          code: 400023,
           message: `Key incorrect.`,
         });
       }
 
-      res.locals.producerEventId = producerEvent.id;
+      res.locals.eventId = event.id;
       return next();
     } catch (error) {
       console.log(error);
@@ -62,7 +58,7 @@ const eventControllers = (knexPool: Knex) => {
   const receiveEvent = async (req: Request, res: Response) => {
     try {
       const receivedEvent = await knexPool('received_event').insert({
-        producer_event_id: res.locals.producerEventId,
+        event_id: res.locals.eventId,
         header: JSON.stringify(req.headers),
         body: JSON.stringify(req.body),
       });
@@ -74,13 +70,13 @@ const eventControllers = (knexPool: Knex) => {
       console.log(error);
       if (error.sqlState) {
         return res.status(500).json({
-          code: 50001,
+          code: 500001,
           message: `Data base error, with code ${error.sqlState}`,
         });
       }
       return res
         .status(500)
-        .json({ code: 50000, message: 'Server Internal Error' });
+        .json({ code: 500000, message: 'Server Internal Error' });
     }
   };
 
@@ -93,20 +89,17 @@ const eventControllers = (knexPool: Knex) => {
       }
 
       const receivedEvents = (await knexPool('received_event')
-        .join(
-          'producer_event',
-          'producer_event.id',
-          'received_event.producer_event_id',
-        )
-        .join('producer', 'producer.id', 'producer_event.producer_id')
+        .join('event', 'event.id', 'received_event.event_id')
+        .join('system', 'system.id', 'event.system_id')
         .select(
           'received_event.id',
-          'producer.id as producerId',
-          'producer_event.id as producerEventId',
-          'producer.name as producerName',
-          'producer.identifier as producerIdentifier',
-          'producer_event.name as producerEventName',
-          'producer_event.identifier as producerEventIdentifier',
+          'system.id as systemId',
+          'event.id as eventId',
+          'system.name as systemName',
+          'system.identifier as systemIdentifier',
+          'event.name as eventName',
+          'event.identifier as eventIdentifier',
+          'event.description as eventDescription',
           'header',
           'body',
           'recived_at as recivedAt',
@@ -116,7 +109,7 @@ const eventControllers = (knexPool: Knex) => {
       const pagination = paginator(receivedEvents, pageSize);
 
       return res.status(200).json({
-        code: 20000,
+        code: 200000,
         message: 'success',
         content: pagination.content,
         pagination: pagination.pagination,
@@ -125,13 +118,13 @@ const eventControllers = (knexPool: Knex) => {
       console.log(error);
       if (error.sqlState) {
         return res.status(500).json({
-          code: 50001,
+          code: 500001,
           message: `Data base error, with code ${error.sqlState}`,
         });
       }
       return res
         .status(500)
-        .json({ code: 50000, message: 'Server Internal Error' });
+        .json({ code: 500000, message: 'Server Internal Error' });
     }
   };
 

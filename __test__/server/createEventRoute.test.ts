@@ -38,9 +38,9 @@ describe('Event routes works accordingly', () => {
       );
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        code: 40020,
+        code: 400020,
         message:
-          'Either the access key or the identifier for the producer events was not send.',
+          'Either the access key or the identifier for the event was not send.',
       });
     });
 
@@ -49,7 +49,10 @@ describe('Event routes works accordingly', () => {
 
       const mockReq = () => {
         const req: Request = {} as Request;
-        req.query = { 'producer-event': 'some', key: 'some' };
+        req.query = {
+          'event-identifier': 'some',
+          'access-key': 'some',
+        };
         return req;
       };
 
@@ -63,8 +66,8 @@ describe('Event routes works accordingly', () => {
 
       expect(mockResponse.status).toHaveBeenCalledWith(404);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        code: 40024,
-        message: `The producer some does not exist.`,
+        code: 400024,
+        message: `The event some does not exist.`,
       });
     });
 
@@ -74,8 +77,8 @@ describe('Event routes works accordingly', () => {
       const mockReq = () => {
         const req: Request = {} as Request;
         req.query = {
-          'producer-event': 'elimino_profesor-123',
-          key: 'notasecurekey',
+          'event-identifier': 'new_profesor',
+          'access-key': 'notasecurekey',
         };
         return req;
       };
@@ -90,7 +93,7 @@ describe('Event routes works accordingly', () => {
 
       expect(mockResponse.status).toHaveBeenCalledWith(403);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        code: 40023,
+        code: 400023,
         message: `Key incorrect.`,
       });
     });
@@ -101,8 +104,8 @@ describe('Event routes works accordingly', () => {
       const mockReq = () => {
         const req: Request = {} as Request;
         req.query = {
-          'producer-event': 'elimino_profesor-123',
-          key: 'asecurekey',
+          'event-identifier': 'new_profesor',
+          'access-key': 'asecurekey',
         };
         return req;
       };
@@ -138,9 +141,9 @@ describe('Event routes works accordingly', () => {
       );
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        code: 40020,
+        code: 400020,
         message:
-          'Either the access key or the identifier for the producer events was not send.',
+          'Either the access key or the identifier for the event was not send.',
       });
     });
   });
