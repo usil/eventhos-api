@@ -20,13 +20,5 @@ export const createRouteEvent = (knexPool: Knex): Route => {
 
   eventRoute.router.get('/', controllers.lisReceivedEvents);
 
-  // eventRoute.router.get('/', (req, res) => {});
-
-  // const controllers = exampleControllers(routeName);
-
-  // * Add all of the routes for /example here
-
-  // exampleRoute.router.get('/', controllers.getWorksMessage);
-
   return eventRoute;
 };

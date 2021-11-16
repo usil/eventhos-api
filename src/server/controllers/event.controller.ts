@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { Knex } from 'knex';
 import ReceivedEvent from '../dtos/RecivedEvent.dto';
+import { paginator } from '../../helpers/general';
 
 const eventControllers = (knexPool: Knex) => {
   const eventValidation = async (
@@ -9,8 +10,9 @@ const eventControllers = (knexPool: Knex) => {
     next: NextFunction,
   ) => {
     try {
-      const producerKey = req.query['key'];
+      const producerKey = req.query['key'] as string;
       const producerEventIdentifier = req.query['producer-event'] as string;
+
       if (!producerKey || !producerEventIdentifier) {
         return res.status(400).json({
           code: 40020,
@@ -18,6 +20,7 @@ const eventControllers = (knexPool: Knex) => {
             'Either the access key or the identifier for the producer events was not send.',
         });
       }
+
       const producerEvent = (await knexPool('producer_event')
         .join('producer', 'producer.id', 'producer_event.producer_id')
         .first()
@@ -25,24 +28,27 @@ const eventControllers = (knexPool: Knex) => {
           'producer.key',
           'producer_event.identifier',
           'producer_event.id',
-        )) as {
+        )
+        .where('producer_event.identifier', producerEventIdentifier)) as {
         key: string;
         identifier: string;
         id: number;
       };
 
       if (!producerEvent) {
-        return res.status(400).json({
-          code: 40021,
+        return res.status(404).json({
+          code: 40024,
           message: `The producer ${producerEventIdentifier} does not exist.`,
         });
       }
+
       if (producerEvent.key !== producerKey) {
         return res.status(403).json({
-          code: 40021,
+          code: 40023,
           message: `Key incorrect.`,
         });
       }
+
       res.locals.producerEventId = producerEvent.id;
       return next();
     } catch (error) {
@@ -52,6 +58,7 @@ const eventControllers = (knexPool: Knex) => {
         .json({ code: 50000, message: 'Server Internal Error' });
     }
   };
+
   const receiveEvent = async (req: Request, res: Response) => {
     try {
       const receivedEvent = await knexPool('received_event').insert({
@@ -85,17 +92,34 @@ const eventControllers = (knexPool: Knex) => {
         pageSize = parseInt(req.query['page-size'] as string);
       }
 
-      const receivedEvents = (await knexPool(
-        'received_event',
-      ).select()) as ReceivedEvent[];
+      const receivedEvents = (await knexPool('received_event')
+        .join(
+          'producer_event',
+          'producer_event.id',
+          'received_event.producer_event_id',
+        )
+        .join('producer', 'producer.id', 'producer_event.producer_id')
+        .select(
+          'received_event.id',
+          'producer.id as producerId',
+          'producer_event.id as producerEventId',
+          'producer.name as producerName',
+          'producer.identifier as producerIdentifier',
+          'producer_event.name as producerEventName',
+          'producer_event.identifier as producerEventIdentifier',
+          'header',
+          'body',
+          'recived_at as recivedAt',
+        )
+        .orderBy('received_event.id', 'desc')) as ReceivedEvent[];
 
       const pagination = paginator(receivedEvents, pageSize);
 
       return res.status(200).json({
         code: 20000,
         message: 'success',
-        content: receivedEvents,
-        pagination,
+        content: pagination.content,
+        pagination: pagination.pagination,
       });
     } catch (error) {
       console.log(error);
@@ -111,20 +135,6 @@ const eventControllers = (knexPool: Knex) => {
     }
   };
 
-  const paginator = (arrayToPaginate: any[], pageSize = 2) => {
-    const pages = arrayToPaginate.reduce((acc, val, i) => {
-      const idx = Math.floor(i / pageSize);
-      const page = acc[idx] || (acc[idx] = []);
-      page.push(val);
-      return acc;
-    }, []) as any[];
-    return {
-      totalElements: arrayToPaginate.length,
-      totalPages: pages.length,
-      page: 0,
-      pageSize,
-    };
-  };
   return { receiveEvent, eventValidation, lisReceivedEvents };
 };
 
