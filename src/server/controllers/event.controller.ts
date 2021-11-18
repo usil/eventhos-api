@@ -2,13 +2,20 @@ import { NextFunction, Request, Response } from 'express';
 import { Knex } from 'knex';
 import ReceivedEvent from '../dtos/RecivedEvent.dto';
 import { paginator } from '../../helpers/general';
-
-const eventControllers = (knexPool: Knex) => {
-  const eventValidation = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ) => {
+import axios, { AxiosRequestConfig } from 'axios';
+import { defer, take } from 'rxjs';
+import { Action, ActionSecurity, Contract } from '../dtos/eventhosInterface';
+import colors from 'colors';
+class EventControllers {
+  knexPool: Knex;
+  constructor(knexPool: Knex) {
+    this.knexPool = knexPool;
+  }
+  /**
+   *
+   * @describe Validates the recived event
+   */
+  eventValidation = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const systemKey = req.query['access-key'] as string;
       const eventIdentifier = req.query['event-identifier'] as string;
@@ -21,15 +28,18 @@ const eventControllers = (knexPool: Knex) => {
         });
       }
 
-      const event = (await knexPool('event')
+      const event = (await this.knexPool
+        .select('system.key', 'event.identifier', 'event.id')
+        .from('event')
         .join('system', 'system.id', 'event.system_id')
         .first()
-        .select('system.key', 'event.identifier', 'event.id')
         .where('event.identifier', eventIdentifier)) as {
         key: string;
         identifier: string;
         id: number;
       };
+
+      console.log(event);
 
       if (!event) {
         return res.status(404).json({
@@ -48,47 +58,152 @@ const eventControllers = (knexPool: Knex) => {
       res.locals.eventId = event.id;
       return next();
     } catch (error) {
-      console.log(error);
-      return res
-        .status(500)
-        .json({ code: 50000, message: 'Server Internal Error' });
+      this.returnError(error, res);
     }
   };
 
-  const receiveEvent = async (req: Request, res: Response) => {
+  /**
+   *
+   * @description Gets all the contracts of an event
+   */
+  getEventContracts = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
-      const receivedEvent = await knexPool('received_event').insert({
-        event_id: res.locals.eventId,
+      if (!res.locals.eventId) {
+        return res.status(400).json({
+          code: 400020,
+          message: 'Event Id was not send.',
+        });
+      }
+      const eventContracts = (await this.knexPool
+        .from('contract')
+        .select()
+        .join('event', 'contract.event_id', 'event.id')
+        .join('action', 'contract.action_id', 'action.id')
+        .join('action_security', 'action.id', 'action_security.action_id')
+        .options({ nestTables: true })
+        .where('contract.event_id', res.locals.eventId)) as {
+        action: Action;
+        event: Event;
+        contract: Contract;
+        action_security: ActionSecurity;
+      }[];
+      if (eventContracts.length === 0) {
+        return res.status(203).json({
+          code: 20031,
+          message: 'success, but no contracts exists for this event',
+        });
+      }
+      res.locals.eventContracts = eventContracts;
+      return next();
+    } catch (error) {
+      this.returnError(error, res);
+    }
+  };
+
+  /**
+   *
+   * @description Manages the event logic
+   */
+  manageEvent = async (req: Request, res: Response) => {
+    try {
+      if (!res.locals.eventId || !res.locals.eventContracts) {
+        return res.status(400).json({
+          code: 400020,
+          message: 'Event Id or Event Contract List was not send.',
+        });
+      }
+
+      if (isNaN(res.locals.eventId)) {
+        return res.status(400).json({
+          code: 400020,
+          message: 'Event Id is not a number.',
+        });
+      }
+
+      if (!res.locals.eventContracts.length) {
+        return res.status(400).json({
+          code: 400020,
+          message: 'Event Contract is not an array.',
+        });
+      }
+
+      const eventId = res.locals.eventId as number;
+
+      const eventContracts = res.locals.eventContracts as {
+        action: Action;
+        event: Event;
+        contract: Contract;
+        action_security: ActionSecurity;
+      }[];
+
+      const receivedEvent = await this.knexPool.table('received_event').insert({
+        event_id: eventId,
         header: JSON.stringify(req.headers),
         body: JSON.stringify(req.body),
       });
 
-      //TODO LOGIC TO DO SOMETHING
-      console.log(`${receivedEvent} sended`);
-      return res.status(200).json({ code: 20000, message: 'success' });
-    } catch (error) {
-      console.log(error);
-      if (error.sqlState) {
-        return res.status(500).json({
-          code: 500001,
-          message: `Data base error, with code ${error.sqlState}`,
+      console.log(
+        colors.yellow.bgBlack(
+          `${receivedEvent} wil be executed at ${new Date().toLocaleString()}:${new Date().getMilliseconds()}`,
+        ),
+      );
+
+      for (const contract of eventContracts) {
+        this.createAxiosObservable(
+          contract.action.http_configuration,
+        ).subscribe({
+          complete: () =>
+            console.log(
+              colors.blue(
+                `Contract ${
+                  contract.contract.identifier
+                } completed at ${new Date().toLocaleString()}:${new Date().getMilliseconds()}`,
+              ),
+            ),
+          next: (res) => {
+            // console.log('header', colors.magenta(JSON.stringify(res.headers)));
+            console.log('body', colors.green(JSON.stringify(res.data)));
+          },
+          error: (error) => {
+            if (error.response) {
+              console.log(error.response.data);
+              console.log(error.response.status);
+              console.log(error.response.headers);
+            } else if (error.request) {
+              console.log(error.request);
+            } else {
+              console.log('Error', error.message);
+            }
+          },
         });
       }
-      return res
-        .status(500)
-        .json({ code: 500000, message: 'Server Internal Error' });
+
+      return res.status(200).json({ code: 20000, message: 'success' });
+    } catch (error) {
+      this.returnError(error, res);
     }
   };
 
-  const lisReceivedEvents = async (req: Request, res: Response) => {
+  /**
+   *
+   * @description List all of the recived events
+   */
+  listReceivedEvents = async (req: Request, res: Response) => {
     try {
       let pageSize = 4;
 
-      if (req.query['page-size']) {
-        pageSize = parseInt(req.query['page-size'] as string);
+      const recivedPageSize = parseInt(req.query['page-size'] as string);
+
+      if (!isNaN(recivedPageSize)) {
+        pageSize = recivedPageSize;
       }
 
-      const receivedEvents = (await knexPool('received_event')
+      const receivedEvents = (await this.knexPool
+        .from('received_event')
         .join('event', 'event.id', 'received_event.event_id')
         .join('system', 'system.id', 'event.system_id')
         .select(
@@ -115,20 +230,32 @@ const eventControllers = (knexPool: Knex) => {
         pagination: pagination.pagination,
       });
     } catch (error) {
-      console.log(error);
-      if (error.sqlState) {
-        return res.status(500).json({
-          code: 500001,
-          message: `Data base error, with code ${error.sqlState}`,
-        });
-      }
-      return res
-        .status(500)
-        .json({ code: 500000, message: 'Server Internal Error' });
+      this.returnError(error, res);
     }
   };
 
-  return { receiveEvent, eventValidation, lisReceivedEvents };
-};
+  // ------------------------------------------- //
 
-export default eventControllers;
+  /**
+   *
+   * @description Creates an observable given an axios config
+   */
+  createAxiosObservable = (axiosConfig: AxiosRequestConfig) => {
+    return defer(() => axios(axiosConfig)).pipe(take(1));
+  };
+
+  returnError = (error: any, res: Response) => {
+    console.log(error);
+    if (error.sqlState) {
+      return res.status(500).json({
+        code: 500001,
+        message: `Data base error, with code ${error.sqlState}`,
+      });
+    }
+    return res
+      .status(500)
+      .json({ code: 500000, message: 'Server Internal Error' });
+  };
+}
+
+export default EventControllers;

@@ -1,5 +1,5 @@
 import { Knex } from 'knex';
-import eventControllers from '../controllers/event.controller';
+import EventControllers from '../controllers/event.controller';
 import Route from '../util/Route';
 
 /**
@@ -10,15 +10,16 @@ export const createRouteEvent = (knexPool: Knex): Route => {
 
   const eventRoute = new Route(routeName);
 
-  const controllers = eventControllers(knexPool);
+  const controllers = new EventControllers(knexPool);
 
   eventRoute.router.post(
     '/',
     controllers.eventValidation,
-    controllers.receiveEvent,
+    controllers.getEventContracts,
+    controllers.manageEvent,
   );
 
-  eventRoute.router.get('/', controllers.lisReceivedEvents);
+  eventRoute.router.get('/', controllers.listReceivedEvents);
 
   return eventRoute;
 };
