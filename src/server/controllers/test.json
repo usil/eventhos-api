@@ -1,0 +1,63 @@
+{
+  "userData": {
+    "userLastName": "Team",
+    "userFullName": "Checkout Team",
+    "encUserId": "...",
+    "userEmail": "Checkout094192@gmail.com",
+    "userFirstName": "Checkout",
+    "userName": "7084410557"
+  },
+  "shippingAddress": {
+    "personName": "Joe Tester",
+    "lastName": "Tester",
+    "firstName": "Joe",
+    "city": "Foster City",
+    "verificationStatus": "NOT_VERIFIED",
+    "countryCode": "US",
+    "postalCode": "94404",
+    "id": "...=",
+    "line1": "...",
+    "stateProvinceCode": "CA"
+  },
+  "creationTimeStamp": 1397847423768,
+  "riskData": {
+    "score": 0,
+    "advice": "Unavailable",
+    "cvvResponseCode": "M",
+    "avsResponseCode": "Y"
+  },
+  "paymentInstrument": {
+    "verificationStatus": "VERIFIED",
+    "nickName": "...",
+    "cardFirstName": "Joe",
+    "paymentType": {},
+    "expired": false,
+    "issuerBid": "null",
+    "binSixDigits": "371449",
+    "cardLastName": "Tester",
+    "nameOnCard": "Joe Tester",
+    "lastFourDigits": "1221",
+    "cardArts": {},
+    "id": "...",
+    "billingAddress": {},
+    "expirationDate": {}
+  },
+  "paymentRequest": {
+    "total": "100",
+    "orderId": "testorderID",
+    "subtotal": "80",
+    "shippingHandling": "5",
+    "discount": "5",
+    "tax": "5",
+    "promoCode": "testCampaignId",
+    "customData": {},
+    "giftWrap": "10",
+    "currencyCode": "USD",
+    "merchantRequestId": "898",
+    "misc": "5"
+  },
+  "partialShippingAddress": {
+    "countryCode": "US",
+    "postalCode": "94404"
+  }
+}

@@ -2,8 +2,8 @@ import {
   basicContent,
   listPaginatedSizeFour,
   listPaginatedSizeTwo,
-} from './listRecivedEvents.mocked';
-import EventControllers from '../../src/server/controllers/event.controller';
+} from '../listRecivedEvents.mocked';
+import EventControllers from '../../../src/server/controllers/event.controller';
 import { Request, Response } from 'express';
 import knex, { Knex } from 'knex';
 import axios from 'axios';

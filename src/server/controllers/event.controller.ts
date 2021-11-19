@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { Knex } from 'knex';
 import ReceivedEvent from '../dtos/RecivedEvent.dto';
 import { paginator } from '../../helpers/general';
-import axios, { AxiosRequestConfig } from 'axios';
+import axios, { AxiosRequestConfig, AxiosRequestHeaders } from 'axios';
 import { defer, take } from 'rxjs';
 import { Action, ActionSecurity, Contract } from '../dtos/eventhosInterface';
 import colors from 'colors';
@@ -152,10 +152,16 @@ class EventControllers {
         ),
       );
 
+      delete req.headers['content-length'];
+
+      const nextRequestHeaders = req.headers as AxiosRequestHeaders;
+
       for (const contract of eventContracts) {
-        this.createAxiosObservable(
-          contract.action.http_configuration,
-        ).subscribe({
+        this.createAxiosObservable({
+          ...contract.action.http_configuration,
+          data: req.body,
+          headers: nextRequestHeaders,
+        }).subscribe({
           complete: () =>
             console.log(
               colors.blue(
@@ -165,7 +171,7 @@ class EventControllers {
               ),
             ),
           next: (res) => {
-            // console.log('header', colors.magenta(JSON.stringify(res.headers)));
+            console.log('header', colors.magenta(JSON.stringify(res.headers)));
             console.log('body', colors.green(JSON.stringify(res.data)));
           },
           error: (error) => {
