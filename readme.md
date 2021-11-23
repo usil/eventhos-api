@@ -11,6 +11,23 @@ The microservice to use Eventhos.
 
 - nodejs >= 14
 
+## Environment
+
+You should create an .env file with the following:
+
+```text
+DATA_BASE_NAME = eventhos
+DATA_BASE_HOST = <your-ip>
+DATA_BASE_PORT = 3306
+DATA_BASE_USER = root
+DATA_BASE_PASSWORD = abcdefg
+PORT = 1000
+```
+
+## Docker
+
+Just run `docker-compose up -d`
+
 ## Usage For Development
 
 First run `npm install`, then run `npm fund`. To start development run `npm run dev:start`.
