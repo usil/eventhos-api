@@ -22,7 +22,7 @@ npm-debug.log
 # profiling files
 chrome-profiler-events*.json
 speed-measure-plugin*.json
-
+ecosystem.config.js
 # IDEs and editors
 /.idea
 .project

@@ -6,6 +6,7 @@ import axios, { AxiosRequestConfig, AxiosRequestHeaders } from 'axios';
 import { defer, take } from 'rxjs';
 import { Action, ActionSecurity, Contract } from '../dtos/eventhosInterface';
 import colors from 'colors';
+
 class EventControllers {
   knexPool: Knex;
   constructor(knexPool: Knex) {
@@ -110,6 +111,7 @@ class EventControllers {
    */
   manageEvent = async (req: Request, res: Response) => {
     try {
+      console.log('reach');
       if (!res.locals.eventId || !res.locals.eventContracts) {
         return res.status(400).json({
           code: 400020,
@@ -161,31 +163,36 @@ class EventControllers {
           ...contract.action.http_configuration,
           data: req.body,
           headers: nextRequestHeaders,
-        }).subscribe({
-          complete: () =>
-            console.log(
-              colors.blue(
-                `Contract ${
-                  contract.contract.identifier
-                } completed at ${new Date().toLocaleString()}:${new Date().getMilliseconds()}`,
+        })
+          .pipe(take(1))
+          .subscribe({
+            complete: () =>
+              console.log(
+                colors.blue(
+                  `Contract ${
+                    contract.contract.identifier
+                  } completed at ${new Date().toLocaleString()}:${new Date().getMilliseconds()}`,
+                ),
               ),
-            ),
-          next: (res) => {
-            console.log('header', colors.magenta(JSON.stringify(res.headers)));
-            console.log('body', colors.green(JSON.stringify(res.data)));
-          },
-          error: (error) => {
-            if (error.response) {
-              console.log(error.response.data);
-              console.log(error.response.status);
-              console.log(error.response.headers);
-            } else if (error.request) {
-              console.log(error.request);
-            } else {
-              console.log('Error', error.message);
-            }
-          },
-        });
+            next: (res) => {
+              console.log(
+                'header',
+                colors.magenta(JSON.stringify(res.headers)),
+              );
+              console.log('body', colors.green(JSON.stringify(res.data)));
+            },
+            error: (error) => {
+              if (error.response) {
+                console.log(error.response.data);
+                console.log(error.response.status);
+                console.log(error.response.headers);
+              } else if (error.request) {
+                console.log(error.request);
+              } else {
+                console.log('Error', error.message);
+              }
+            },
+          });
       }
 
       return res.status(200).json({ code: 20000, message: 'success' });
@@ -251,7 +258,7 @@ class EventControllers {
   };
 
   returnError = (error: any, res: Response) => {
-    console.log(error);
+    console.log('here is an error:', colors.red(error));
     if (error.sqlState) {
       return res.status(500).json({
         code: 500001,

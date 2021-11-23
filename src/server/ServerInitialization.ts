@@ -11,7 +11,6 @@ import {
 } from './util/ExpressNecessary';
 import knex, { Knex } from 'knex';
 import { getConfig } from '../config/main.config';
-
 /**
  *
  * @description Use this class to create and serve an application
@@ -52,7 +51,8 @@ class ServerInitialization
         password: this.configuration.dataBasePassword,
         database: this.configuration.dataBaseName,
       },
-      pool: { min: 0, max: 5 },
+      acquireConnectionTimeout: 10000,
+      pool: { min: 20, max: 400 },
     });
   }
 
@@ -66,6 +66,7 @@ class ServerInitialization
     this.app.use(morgan(':method :url'));
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
   }
 
   /**

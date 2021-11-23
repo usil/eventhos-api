@@ -22,7 +22,12 @@ let configuration: Partial<typeof ConfigGlobalDto>;
  */
 export const getConfig = () => {
   const settings = envSettings.loadJsonFileSync(
-    path.resolve(__dirname, './settings.json'),
+    path.resolve(
+      __dirname,
+      process.env.NODE_ENV === 'production'
+        ? '../settings.json'
+        : '../../settings.json',
+    ),
   );
 
   configuration = settings;
