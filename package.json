@@ -6,9 +6,9 @@
   "scripts": {
     "test": "cross-env NODE_ENV=test jest --verbose --collectCoverage && jest-coverage-badges",
     "test:watch": "npm test -- --watch",
+    "build": "cross-env NODE_ENV=production webpack --config webpack.prod.js",
     "start": "cross-env NODE_ENV=production node --max-old-space-size=1192 ./dist/main.js | bunyan",
-    "dev": "cross-env NODE_ENV=development npx ts-node-dev ./src/index.ts | bunyan",
-    "build": "cross-env NODE_ENV=production webpack --config webpack.prod.js"
+    "dev": "cross-env NODE_ENV=development npx ts-node-dev ./src/index.ts | bunyan"
   },
   "author": "Tac Etarip",
   "license": "ISC",

@@ -30,6 +30,7 @@ export const getConfig = () => {
     ),
   );
 
+  console.log(settings);
   configuration = settings;
 
   configuration.port = parseInt(settings.port);

@@ -1,0 +1,27 @@
+version: '3.7'
+services:
+  eventhos:
+    build: .
+    ports:
+      - '1000:1000'
+    env_file:
+      - ./.env
+    depends_on:
+      - eventhos-db
+  eventhos-db:
+    image: mysql:5.7
+    command: mysqld --sql_mode="" --general-log=1 --general-log-file=/var/log/mysql/general-log.log
+    container_name: eventhos-db
+    ports:
+      - '3306:3306'
+    volumes:
+      - ./database:/docker-entrypoint-initdb.d
+    environment:
+      MYSQL_ROOT_PASSWORD: 'abcdefg'
+      MYSQL_PASSWORD: 'abcdefg'
+      MYSQL_DATABASE: 'eventhos'
+      TZ: America/Lima
+    healthcheck:
+      test: 'cat /var/log/mysql/general-log.log | grep "root@localhost on  using Socket"'
+      interval: 1s
+      retries: 120
