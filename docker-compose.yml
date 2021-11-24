@@ -1,13 +1,14 @@
 version: '3.7'
 services:
-  eventhos:
+  eventhos-api:
     build: .
     ports:
       - '1000:1000'
     env_file:
       - ./.env
     depends_on:
-      - eventhos-db
+      eventhos-db:
+        condition: service_healthy
   eventhos-db:
     image: mysql:5.7
     command: mysqld --sql_mode="" --general-log=1 --general-log-file=/var/log/mysql/general-log.log
