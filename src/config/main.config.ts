@@ -30,7 +30,6 @@ export const getConfig = () => {
     ),
   );
 
-  console.log(settings);
   configuration = settings;
 
   configuration.port = parseInt(settings.port);
@@ -38,6 +37,8 @@ export const getConfig = () => {
   configuration.dataBasePort = parseInt(settings.dataBasePort);
 
   configuration.port = parseInt(settings.port);
+
+  configuration.cpuCount = parseInt(settings.cpuCount) || 1;
 
   configuration.log = (): bunyan =>
     getLogger(process.env.NODE_ENV.toUpperCase(), version);

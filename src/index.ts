@@ -1,17 +1,23 @@
-import throng from 'throng';
+// import throng from 'throng';
 import { getConfig } from './config/main.config';
 import { newServer } from './server/createServer';
-import v8 from 'v8';
+import cluster from 'cluster';
+import os from 'os';
 
-const WORKERS = 1;
+const configuration = getConfig();
 
-const start = (id: number) => {
-  const configuration = getConfig();
+const totalCPUs = os.cpus().length;
+
+if (totalCPUs < configuration.cpuCount) {
+  throw new Error('You dont have enough cpu cores');
+}
+
+const start = () => {
   const port = configuration.port;
-  const maxHeapSz = v8.getHeapStatistics().heap_size_limit;
-  const maxHeapSz_GB = (maxHeapSz / 1024 ** 3).toFixed(1);
-  console.log(`${maxHeapSz_GB}GB`);
-  configuration.log().info(`Id Worker ${id}`);
+  // const maxHeapSz = v8.getHeapStatistics().heap_size_limit;
+  // const maxHeapSz_GB = (maxHeapSz / 1024 ** 3).toFixed(1);
+  // console.log(`${maxHeapSz_GB}GB`);
+  // configuration.log().info(`Id Worker ${id}`);
   const serverApp = newServer(port || 1000);
   const server = serverApp.server;
 
@@ -24,4 +30,20 @@ const start = (id: number) => {
   });
 };
 
-throng({ worker: start, count: WORKERS });
+if (cluster.isMaster) {
+  configuration.log().info(`Master ${process.pid} is running`);
+  for (let i = 0; i < configuration.cpuCount; i++) {
+    cluster
+      .fork()
+      .on('listening', () => configuration.log().info(`Cluster #${i} created`));
+  }
+  cluster.on('exit', (worker, code, signal) => {
+    configuration.log().warn(`worker ${worker.process.pid} died`);
+    configuration.log().info('Trying to fork another');
+    cluster.fork();
+  });
+} else {
+  start();
+}
+
+// throng({ worker: start, count: WORKERS });

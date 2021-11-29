@@ -11,6 +11,10 @@ The microservice to use Eventhos.
 
 - nodejs >= 14
 
+## Cluster Mode
+
+Modify the CPU_COUNT environment variables with the number of CPUs that you want to use.
+
 ## Environment
 
 You should create an .env file with the following:
@@ -22,6 +26,7 @@ DATA_BASE_PORT = 3306
 DATA_BASE_USER = root
 DATA_BASE_PASSWORD = abcdefg
 PORT = 1000
+CPU_COUNT = <number of CPUs to use>
 ```
 
 ## Docker

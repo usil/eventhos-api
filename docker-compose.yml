@@ -12,17 +12,18 @@ services:
       DATA_BASE_USER: 'usr_eventhos'
       DATA_BASE_PASSWORD: 'abcdefg'
       NODE_ENV: 'production'
+      CPU_COUNT: 1
     depends_on:
       eventhos-db:
         condition: service_healthy
     networks:
-      - app_network        
+      - app_network
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - 'host.docker.internal:host-gateway'
     deploy:
       resources:
         limits:
-          memory: 1024M            
+          memory: 1024M
   eventhos-db:
     image: mysql:5.7
     command: mysqld --sql_mode="" --general-log=1 --general-log-file=/var/log/mysql/general-log.log
@@ -40,12 +41,12 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1024M      
+          memory: 1024M
     healthcheck:
       test: 'cat /var/log/mysql/general-log.log | grep "root@localhost on  using Socket"'
       interval: 1s
       retries: 120
-      
+
 networks:
   app_network:
-    driver: bridge      
+    driver: bridge

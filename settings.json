@@ -6,5 +6,6 @@
   "dataBasePort": "${DATA_BASE_PORT}",
   "dataBaseUser": "${DATA_BASE_USER}",
   "dataBasePassword": "${DATA_BASE_PASSWORD}",
-  "pageSize": 4
+  "pageSize": 4,
+  "cpuCount": "${CPU_COUNT}"
 }
