@@ -154,15 +154,20 @@ class EventControllers {
         ),
       );
 
-      delete req.headers['content-length'];
+      //TODO: PARAMETERIZE FORWARD-HEADERS
 
-      const nextRequestHeaders = req.headers as AxiosRequestHeaders;
+      // delete req.headers['content-length'];
+
+      // const nextRequestHeaders = req.headers as AxiosRequestHeaders;
 
       for (const contract of eventContracts) {
         this.createAxiosObservable({
           ...contract.action.http_configuration,
           data: req.body,
-          headers: nextRequestHeaders,
+          headers: {
+            // ...nextRequestHeaders,
+            ...contract.action.http_configuration.headers,
+          },
         })
           .pipe(take(1))
           .subscribe({
