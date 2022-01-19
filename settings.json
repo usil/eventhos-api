@@ -7,5 +7,6 @@
   "dataBaseUser": "${DATA_BASE_USER}",
   "dataBasePassword": "${DATA_BASE_PASSWORD}",
   "pageSize": 4,
-  "cpuCount": "${CPU_COUNT}"
+  "cpuCount": "${CPU_COUNT}",
+  "jwtSecret": "${JWT_SECRET}"
 }

@@ -13,6 +13,7 @@ export class ConfigGlobalDto {
   dataBaseUser: string;
   dataBasePassword: string;
   cpuCount: number;
+  jwtSecret: string;
 }
 
 export default new ConfigGlobalDto();

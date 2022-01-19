@@ -5,21 +5,24 @@ import Route from '../util/Route';
 /**
  * @description Create a route
  */
-export const createRouteEvent = (knexPool: Knex): Route => {
+export const createRouteEvent = (knexPool: Knex, oauthBoot: any): Route => {
   const routeName = '/event';
 
   const eventRoute = new Route(routeName);
 
   const controllers = new EventControllers(knexPool);
 
-  eventRoute.router.post(
+  const authRouter = oauthBoot.bootOauthExpressRouter(eventRoute.router);
+
+  authRouter.obPost(
     '/',
+    'event:create',
     controllers.eventValidation,
     controllers.getEventContracts,
     controllers.manageEvent,
   );
 
-  eventRoute.router.get('/', controllers.listReceivedEvents);
+  authRouter.get('/', controllers.listReceivedEvents);
 
   return eventRoute;
 };

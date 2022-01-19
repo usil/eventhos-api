@@ -208,22 +208,53 @@ class EventControllers {
 
   /**
    *
-   * @description List all of the recived events
+   * @description List all of the received events
    */
   listReceivedEvents = async (req: Request, res: Response) => {
     try {
-      let pageSize = 4;
+      let itemsPerPage = 5;
+      let pageIndex = 0;
+      let order = 'asc';
 
-      const recivedPageSize = parseInt(req.query['page-size'] as string);
-
-      if (!isNaN(recivedPageSize)) {
-        pageSize = recivedPageSize;
+      if (
+        req.query['itemsPerPage'] &&
+        parseInt(req.query['itemsPerPage'] as string) >= 1
+      ) {
+        itemsPerPage = parseInt(req.query['itemsPerPage'] as string);
       }
 
-      const receivedEvents = (await this.knexPool
-        .from('received_event')
-        .join('event', 'event.id', 'received_event.event_id')
-        .join('system', 'system.id', 'event.system_id')
+      if (
+        req.query['pageIndex'] &&
+        parseInt(req.query['pageIndex'] as string) >= 0
+      ) {
+        pageIndex = parseInt(req.query['pageIndex'] as string);
+      }
+
+      if (
+        req.query['order'] &&
+        (req.query['order'] === 'desc' || req.query['order'] === 'asc')
+      ) {
+        order = req.query['order'];
+      }
+
+      const offset = itemsPerPage * pageIndex;
+
+      const totalReceivedEventCount = (
+        await this.knexPool.table('received_event').count()
+      )[0]['count(*)'];
+
+      const totalPages = Math.ceil(
+        parseInt(totalReceivedEventCount as string) / itemsPerPage,
+      );
+
+      console.log(order);
+
+      const receivedEvents = (await (this.knexPool as any)({
+        received_event: this.knexPool('received_event')
+          .limit(itemsPerPage)
+          .offset(offset)
+          .orderBy('received_event.id', order),
+      })
         .select(
           'received_event.id',
           'system.id as systemId',
@@ -237,15 +268,19 @@ class EventControllers {
           'body',
           'recived_at as recivedAt',
         )
-        .orderBy('received_event.id', 'desc')) as ReceivedEvent[];
-
-      const pagination = paginator(receivedEvents, pageSize);
+        .join('event', 'event.id', 'received_event.event_id')
+        .join('system', 'system.id', 'event.system_id')) as ReceivedEvent[];
 
       return res.status(200).json({
         code: 200000,
         message: 'success',
-        content: pagination.content,
-        pagination: pagination.pagination,
+        content: {
+          items: receivedEvents,
+          pageIndex,
+          itemsPerPage,
+          totalItems: totalPages,
+          totalPages,
+        },
       });
     } catch (error) {
       this.returnError(error, res);

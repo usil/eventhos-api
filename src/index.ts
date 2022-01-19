@@ -12,13 +12,13 @@ if (totalCPUs < configuration.cpuCount) {
   throw new Error('You dont have enough cpu cores');
 }
 
-const start = () => {
+const start = async () => {
   const port = configuration.port;
   // const maxHeapSz = v8.getHeapStatistics().heap_size_limit;
   // const maxHeapSz_GB = (maxHeapSz / 1024 ** 3).toFixed(1);
   // console.log(`${maxHeapSz_GB}GB`);
   // configuration.log().info(`Id Worker ${id}`);
-  const serverApp = newServer(port || 1000);
+  const serverApp = await newServer(port || 1000);
   const server = serverApp.server;
 
   server.on('listening', () => {
@@ -45,5 +45,3 @@ if (cluster.isMaster) {
 } else {
   start();
 }
-
-// throng({ worker: start, count: WORKERS });

@@ -1,5 +1,6 @@
 node_modules
 node_modules
+credentials.txt
 # See http://help.github.com/ignore-files/ for more about ignoring files.
 dist/
 # compiled output
