@@ -19,6 +19,7 @@ npm-debug.log
 /siriodinar-front
 # dependencies
 /node_modules
+coverage
 
 # profiling files
 chrome-profiler-events*.json

@@ -1,10 +1,10 @@
 {
-  "name": "eventhos-demo",
-  "version": "1.0.0",
+  "name": "eventhos-backend",
+  "version": "0.0.1",
   "description": "A template to use knex with mysql",
   "main": "./dist/main.js",
   "scripts": {
-    "test": "cross-env NODE_ENV=test jest --verbose --collectCoverage && jest-coverage-badges",
+    "test": "cross-env NODE_ENV=test jest --verbose --collectCoverage && jest-coverage-badges --output badges",
     "test:watch": "npm test -- --watch",
     "build": "cross-env NODE_ENV=production webpack --config webpack.prod.js",
     "start": "cross-env NODE_ENV=production node --max-old-space-size=1192 ./dist/main.js | bunyan",
