@@ -1,4 +1,4 @@
-import { getConfig } from '../../src/config/main.config';
+import { getConfig } from '../../config/main.config';
 import bunyan from 'bunyan';
 
 describe('Correct configuration declaration', () => {

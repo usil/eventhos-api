@@ -1,11 +1,16 @@
 import { NextFunction, Request, Response } from 'express';
 import { Knex } from 'knex';
 import ReceivedEvent from '../dtos/RecivedEvent.dto';
-import { paginator } from '../../helpers/general';
-import axios, { AxiosRequestConfig, AxiosRequestHeaders } from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import { defer, take } from 'rxjs';
-import { Action, ActionSecurity, Contract } from '../dtos/eventhosInterface';
+import {
+  Action,
+  ActionSecurity,
+  Contract,
+  Event,
+} from '../dtos/eventhosInterface';
 import colors from 'colors';
+
 class EventControllers {
   knexPool: Knex;
   constructor(knexPool: Knex) {
@@ -152,40 +157,50 @@ class EventControllers {
         ),
       );
 
-      delete req.headers['content-length'];
+      //TODO: PARAMETERIZE FORWARD-HEADERS
 
-      const nextRequestHeaders = req.headers as AxiosRequestHeaders;
+      // delete req.headers['content-length'];
+
+      // const nextRequestHeaders = req.headers as AxiosRequestHeaders;
 
       for (const contract of eventContracts) {
         this.createAxiosObservable({
           ...contract.action.http_configuration,
           data: req.body,
-          headers: nextRequestHeaders,
-        }).subscribe({
-          complete: () =>
-            console.log(
-              colors.blue(
-                `Contract ${
-                  contract.contract.identifier
-                } completed at ${new Date().toLocaleString()}:${new Date().getMilliseconds()}`,
+          headers: {
+            // ...nextRequestHeaders,
+            ...contract.action.http_configuration.headers,
+          },
+        })
+          .pipe(take(1))
+          .subscribe({
+            complete: () =>
+              console.log(
+                colors.blue(
+                  `Contract ${
+                    contract.contract.identifier
+                  } completed at ${new Date().toLocaleString()}:${new Date().getMilliseconds()}`,
+                ),
               ),
-            ),
-          next: (res) => {
-            console.log('header', colors.magenta(JSON.stringify(res.headers)));
-            console.log('body', colors.green(JSON.stringify(res.data)));
-          },
-          error: (error) => {
-            if (error.response) {
-              console.log(error.response.data);
-              console.log(error.response.status);
-              console.log(error.response.headers);
-            } else if (error.request) {
-              console.log(error.request);
-            } else {
-              console.log('Error', error.message);
-            }
-          },
-        });
+            next: (res) => {
+              console.log(
+                'header',
+                colors.magenta(JSON.stringify(res.headers)),
+              );
+              console.log('body', colors.green(JSON.stringify(res.data)));
+            },
+            error: (error) => {
+              if (error.response) {
+                console.log(error.response.data);
+                console.log(error.response.status);
+                console.log(error.response.headers);
+              } else if (error.request) {
+                console.log(error.request);
+              } else {
+                console.log('Error', error.message);
+              }
+            },
+          });
       }
 
       return res.status(200).json({ code: 20000, message: 'success' });
@@ -196,22 +211,51 @@ class EventControllers {
 
   /**
    *
-   * @description List all of the recived events
+   * @description List all of the received events
    */
   listReceivedEvents = async (req: Request, res: Response) => {
     try {
-      let pageSize = 4;
+      let itemsPerPage = 5;
+      let pageIndex = 0;
+      let order = 'asc';
 
-      const recivedPageSize = parseInt(req.query['page-size'] as string);
-
-      if (!isNaN(recivedPageSize)) {
-        pageSize = recivedPageSize;
+      if (
+        req.query['itemsPerPage'] &&
+        parseInt(req.query['itemsPerPage'] as string) >= 1
+      ) {
+        itemsPerPage = parseInt(req.query['itemsPerPage'] as string);
       }
 
-      const receivedEvents = (await this.knexPool
-        .from('received_event')
-        .join('event', 'event.id', 'received_event.event_id')
-        .join('system', 'system.id', 'event.system_id')
+      if (
+        req.query['pageIndex'] &&
+        parseInt(req.query['pageIndex'] as string) >= 0
+      ) {
+        pageIndex = parseInt(req.query['pageIndex'] as string);
+      }
+
+      if (
+        req.query['order'] &&
+        (req.query['order'] === 'desc' || req.query['order'] === 'asc')
+      ) {
+        order = req.query['order'];
+      }
+
+      const offset = itemsPerPage * pageIndex;
+
+      const totalReceivedEventCount = (
+        await this.knexPool('received_event').count()
+      )[0]['count(*)'];
+
+      const totalPages = Math.ceil(
+        parseInt(totalReceivedEventCount as string) / itemsPerPage,
+      );
+
+      const receivedEvents = (await (this.knexPool as any)({
+        received_event: this.knexPool('received_event')
+          .limit(itemsPerPage)
+          .offset(offset)
+          .orderBy('received_event.id', order),
+      })
         .select(
           'received_event.id',
           'system.id as systemId',
@@ -225,15 +269,19 @@ class EventControllers {
           'body',
           'recived_at as recivedAt',
         )
-        .orderBy('received_event.id', 'desc')) as ReceivedEvent[];
-
-      const pagination = paginator(receivedEvents, pageSize);
+        .join('event', 'event.id', 'received_event.event_id')
+        .join('system', 'system.id', 'event.system_id')) as ReceivedEvent[];
 
       return res.status(200).json({
         code: 200000,
         message: 'success',
-        content: pagination.content,
-        pagination: pagination.pagination,
+        content: {
+          items: receivedEvents,
+          pageIndex,
+          itemsPerPage,
+          totalItems: totalPages,
+          totalPages,
+        },
       });
     } catch (error) {
       this.returnError(error, res);
@@ -251,7 +299,7 @@ class EventControllers {
   };
 
   returnError = (error: any, res: Response) => {
-    console.log(error);
+    console.log('here is an error:', colors.red(error));
     if (error.sqlState) {
       return res.status(500).json({
         code: 500001,

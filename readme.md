@@ -1,15 +1,37 @@
 # Eventhos Demo 1.0.0
 
-<img src="./coverage/badge-branches.svg">
-<img src="./coverage/badge-functions.svg">
-<img src="./coverage/badge-lines.svg">
-<img src="./coverage/badge-statements.svg">
+<img src="./badges/badge-branches.svg">
+<img src="./badges/badge-functions.svg">
+<img src="./badges/badge-lines.svg">
+<img src="./badges/badge-statements.svg">
 
 The microservice to use Eventhos.
 
 ## Requirements
 
 - nodejs >= 14
+
+## Cluster Mode
+
+Modify the CPU_COUNT environment variables with the number of CPUs that you want to use.
+
+## Environment
+
+You should create an .env file with the following:
+
+```text
+DATA_BASE_NAME = eventhos
+DATA_BASE_HOST = <your-ip>
+DATA_BASE_PORT = 3306
+DATA_BASE_USER = root
+DATA_BASE_PASSWORD = abcdefg
+PORT = 1000
+CPU_COUNT = <number of CPUs to use>
+```
+
+## Docker
+
+Just run `docker-compose up -d`
 
 ## Usage For Development
 

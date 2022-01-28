@@ -10,7 +10,8 @@ import {
   IExpressNecessaryParams,
 } from './util/ExpressNecessary';
 import knex, { Knex } from 'knex';
-import { getConfig } from '../config/main.config';
+import { getConfig } from '../../config/main.config';
+import OauthBoot from 'nodeboot-oauth2-starter';
 
 /**
  *
@@ -19,11 +20,14 @@ import { getConfig } from '../config/main.config';
 class ServerInitialization
   implements IExpressNecessaryFunctions, IExpressNecessaryParams
 {
-  app: express.Application;
+  app: any;
   server: http.Server;
   port: number;
   routes: string[] = [];
   knexPool: Knex;
+  knexAuthDataBase: Knex;
+
+  oauthBoot: any;
 
   configuration = getConfig();
 
@@ -33,9 +37,31 @@ class ServerInitialization
    */
   constructor(port: number) {
     this.addKnexjsConfig();
-    this.app = express();
+
+    const localApp = express();
+
+    const oauthBoot = new OauthBoot(
+      localApp,
+      this.knexAuthDataBase,
+      this.configuration.jwtSecret,
+    );
+
+    this.app = oauthBoot.expressSecured;
+
     this.port = port;
+
     this.addBasicConfiguration();
+
+    this.oauthBoot = oauthBoot;
+  }
+
+  async init() {
+    try {
+      await this.oauthBoot.init();
+    } catch (error) {
+      console.log(error);
+      throw new Error('An error ocurred while creating the server');
+    }
   }
 
   /**
@@ -51,6 +77,20 @@ class ServerInitialization
         user: this.configuration.dataBaseUser,
         password: this.configuration.dataBasePassword,
         database: this.configuration.dataBaseName,
+      },
+      acquireConnectionTimeout: 10000,
+      pool: { min: 20, max: 400 },
+    });
+
+    this.knexAuthDataBase = knex({
+      client: 'mysql2',
+      version: '5.7',
+      connection: {
+        host: this.configuration.dataBaseHost,
+        port: this.configuration.dataBasePort,
+        user: this.configuration.dataBaseUser,
+        password: this.configuration.dataBasePassword,
+        database: 'auth_eventhos',
       },
       pool: { min: 0, max: 5 },
     });

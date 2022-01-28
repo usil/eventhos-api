@@ -1,0 +1,87 @@
+version: '3.7'
+services:
+  eventhos-api-1:
+    build: .
+    container_name: eventhos-api-1
+    ports:
+      - '1001:1000'
+    environment:
+      DATA_BASE_NAME: 'eventhos'
+      DATA_BASE_HOST: host.docker.internal
+      DATA_BASE_PORT: 3306
+      DATA_BASE_USER: 'usr_eventhos'
+      DATA_BASE_PASSWORD: 'abcdefg'
+      NODE_ENV: 'production'
+      CPU_COUNT: 1
+    depends_on:
+      eventhos-db:
+        condition: service_healthy
+    networks:
+      - app_network
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+  eventhos-api-2:
+    build: .
+    container_name: eventhos-api-2
+    ports:
+      - '1002:1000'
+    environment:
+      DATA_BASE_NAME: 'eventhos'
+      DATA_BASE_HOST: host.docker.internal
+      DATA_BASE_PORT: 3306
+      DATA_BASE_USER: 'usr_eventhos'
+      DATA_BASE_PASSWORD: 'abcdefg'
+      NODE_ENV: 'production'
+      CPU_COUNT: 1
+    depends_on:
+      eventhos-db:
+        condition: service_healthy
+    networks:
+      - app_network
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+  nginx:
+    build: ./docker/nginx
+    container_name: nginx
+    ports:
+      - '1000:80'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    depends_on:
+      - eventhos-api-1
+      - eventhos-api-2
+
+  eventhos-db:
+    image: mysql:5.7
+    command: mysqld --sql_mode="" --general-log=1 --general-log-file=/var/log/mysql/general-log.log
+    container_name: eventhos-db
+    ports:
+      - '3306:3306'
+    volumes:
+      - ./database:/docker-entrypoint-initdb.d
+    environment:
+      MYSQL_ROOT_PASSWORD: 'abcdefg'
+      MYSQL_PASSWORD: 'abcdefg'
+      MYSQL_USER: 'usr_eventhos'
+      MYSQL_DATABASE: 'eventhos'
+      TZ: America/Lima
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+    healthcheck:
+      test: 'cat /var/log/mysql/general-log.log | grep "root@localhost on  using Socket"'
+      interval: 1s
+      retries: 120
+
+networks:
+  app_network:
+    driver: bridge
