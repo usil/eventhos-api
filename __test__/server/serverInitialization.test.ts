@@ -2,6 +2,7 @@ import http from 'http';
 import ServerInitialization from '../../src/server/ServerInitialization';
 import Route from '../../src/server/util/Route';
 import request from 'supertest';
+import OauthBoot from 'nodeboot-oauth2-starter';
 
 const testPort = 8081;
 
@@ -42,6 +43,18 @@ describe('Create an express app and an http server', () => {
   it('Adds a path correctly', async () => {
     const response = await request(serverInitialization.app).get('/test');
     expect(response.statusCode).toBe(200);
+  });
+
+  it('Fails init', async () => {
+    const spyOauth = jest
+      .spyOn(OauthBoot.prototype, 'init')
+      .mockImplementation(() => {
+        return Promise.reject(new Error('Async Error'));
+      });
+
+    await expect(serverInitialization.init()).rejects.toThrow();
+
+    spyOauth.mockRestore();
   });
 
   afterAll(() => {

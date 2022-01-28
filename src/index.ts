@@ -1,5 +1,5 @@
 // import throng from 'throng';
-import { getConfig } from './config/main.config';
+import { getConfig } from '../config/main.config';
 import { newServer } from './server/createServer';
 import cluster from 'cluster';
 import os from 'os';

@@ -1,10 +1,14 @@
 import { NextFunction, Request, Response } from 'express';
 import { Knex } from 'knex';
 import ReceivedEvent from '../dtos/RecivedEvent.dto';
-import { paginator } from '../../helpers/general';
-import axios, { AxiosRequestConfig, AxiosRequestHeaders } from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import { defer, take } from 'rxjs';
-import { Action, ActionSecurity, Contract } from '../dtos/eventhosInterface';
+import {
+  Action,
+  ActionSecurity,
+  Contract,
+  Event,
+} from '../dtos/eventhosInterface';
 import colors from 'colors';
 
 class EventControllers {
@@ -111,7 +115,6 @@ class EventControllers {
    */
   manageEvent = async (req: Request, res: Response) => {
     try {
-      console.log('reach');
       if (!res.locals.eventId || !res.locals.eventContracts) {
         return res.status(400).json({
           code: 400020,
@@ -240,14 +243,12 @@ class EventControllers {
       const offset = itemsPerPage * pageIndex;
 
       const totalReceivedEventCount = (
-        await this.knexPool.table('received_event').count()
+        await this.knexPool('received_event').count()
       )[0]['count(*)'];
 
       const totalPages = Math.ceil(
         parseInt(totalReceivedEventCount as string) / itemsPerPage,
       );
-
-      console.log(order);
 
       const receivedEvents = (await (this.knexPool as any)({
         received_event: this.knexPool('received_event')

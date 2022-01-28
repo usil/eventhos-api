@@ -4,10 +4,10 @@ import express from 'express';
 
 describe('Correct app creation', () => {
   let server: Server;
-  let expressApp: express.Application;
+  let expressApp: any;
 
-  beforeAll(() => {
-    const serverFull = newServer(8083);
+  beforeAll(async () => {
+    const serverFull = await newServer(8083);
     server = serverFull.server;
     expressApp = serverFull.app;
   });
@@ -18,6 +18,10 @@ describe('Correct app creation', () => {
 
   it('Creates an instance of an http server', () => {
     expect(server).toBeInstanceOf(Server);
+  });
+
+  it('ss', () => {
+    expect(expressApp.obPost).toBeTruthy();
   });
 
   beforeAll(() => {

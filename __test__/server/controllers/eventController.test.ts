@@ -8,6 +8,7 @@ import { Request, Response } from 'express';
 import knex, { Knex } from 'knex';
 import axios from 'axios';
 import { firstValueFrom, of, throwError } from 'rxjs';
+import ReceivedEvent from '../../../src/server/dtos/RecivedEvent.dto';
 jest.mock('axios', () => jest.fn());
 jest.mock('knex', () => {
   const mKnex = {
@@ -16,6 +17,7 @@ jest.mock('knex', () => {
     join: jest.fn().mockReturnThis(),
     first: jest.fn().mockReturnThis(),
     table: jest.fn().mockReturnThis(),
+    count: jest.fn().mockResolvedValue([{ 'count(*)': 2 }]),
     insert: jest
       .fn()
       .mockReturnThis()
@@ -365,6 +367,7 @@ describe('Event routes work accordingly', () => {
       );
 
       expect(mockResponse.status).toHaveBeenCalledWith(500);
+
       expect(mockResponse.json).toHaveBeenCalledWith({
         code: 500001,
         message: `Data base error, with code 1`,
@@ -372,214 +375,388 @@ describe('Event routes work accordingly', () => {
     });
   });
 
-  describe('Correct Event Management', () => {
-    let eventControllers: EventControllers;
-    beforeAll(() => {
-      eventControllers = new EventControllers(knex({}));
-    });
-    it('Not event id or contract list is sended', async () => {
+  describe('Received events listing', () => {
+    it('List received events', async () => {
+      const receivedEvents: ReceivedEvent[] = [
+        {
+          id: 1,
+          producer_event_id: 1,
+          header: { someHeader: 'some' },
+          recived_at: new Date(),
+        },
+      ];
+
       const mockReq = () => {
         const req: Request = {} as Request;
+        req.query = { itemsPerPage: '10', pageIndex: '1', order: 'desc' };
         return req;
       };
 
-      const localRes = mockRes();
+      const mockResponse = mockRes();
 
-      localRes.locals.eventId = 1;
+      const knexMock = jest.fn().mockImplementation((objectOrString) => {
+        const knex: Record<string, any> = {};
+        knex.limit = jest.fn().mockReturnValue(knex);
+        knex.offset = jest.fn().mockReturnValue(knex);
+        knex.orderBy = jest.fn();
+        knex.select = jest.fn().mockReturnValue(knex);
+        knex.where = jest.fn().mockReturnValue(knex);
+        knex.table = jest.fn().mockReturnValue(knex);
+        knex.count = jest.fn().mockResolvedValue([{ 'count(*)': 1 }]);
+        knex.join = jest.fn().mockImplementation((some) => {
+          knex.join = jest.fn().mockReturnValueOnce(receivedEvents);
+          return knex;
+        });
+        return knex;
+      });
+
+      const eventControllers = new EventControllers(knexMock as any);
+      await eventControllers.listReceivedEvents(mockReq(), mockResponse);
+      expect(knexMock).toHaveBeenCalledTimes(3);
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        code: 200000,
+        message: 'success',
+        content: {
+          items: receivedEvents,
+          pageIndex: 1,
+          itemsPerPage: 10,
+          totalItems: 1,
+          totalPages: 1,
+        },
+      });
+    });
+
+    it('List received events fails', async () => {
+      const receivedEvents: ReceivedEvent[] = [
+        {
+          id: 1,
+          producer_event_id: 1,
+          header: { someHeader: 'some' },
+          recived_at: new Date(),
+        },
+      ];
+
+      const mockReq = () => {
+        const req: Request = {} as Request;
+        req.query = { itemsPerPage: '10', pageIndex: '1', order: 'desc' };
+        return req;
+      };
 
       const mockResponse = mockRes();
 
-      await eventControllers.manageEvent(mockReq(), mockResponse);
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({
+      const knexMock = jest.fn().mockImplementation((objectOrString) => {
+        const knex: Record<string, any> = {};
+        knex.limit = jest.fn().mockReturnValue(knex);
+        knex.offset = jest.fn().mockReturnValue(knex);
+        knex.orderBy = jest.fn();
+        knex.select = jest.fn().mockReturnValue(knex);
+        knex.where = jest.fn().mockReturnValue(knex);
+        knex.table = jest.fn().mockReturnValue(knex);
+        knex.count = jest.fn().mockRejectedValue(new Error('Async error'));
+        knex.join = jest.fn().mockImplementation((some) => {
+          knex.join = jest.fn().mockReturnValueOnce(receivedEvents);
+          return knex;
+        });
+        return knex;
+      });
+
+      const eventControllers = new EventControllers(knexMock as any);
+      await eventControllers.listReceivedEvents(mockReq(), mockResponse);
+      expect(mockResponse.status).toHaveBeenCalledWith(500);
+    });
+  });
+
+  describe('Manage event', () => {
+    it('Manage event correct', async () => {
+      const mockRes = () => {
+        const res = {} as Response;
+        res.locals = {
+          eventId: 1,
+          eventContracts: [
+            {
+              action: {
+                id: 1,
+                system_id: 1,
+                identifier: 'identifier',
+                name: 'name',
+                http_configuration: {
+                  auth: 'x',
+                },
+                operation: 'select',
+                description: 'description',
+                deleted: 1,
+                created_at: new Date(),
+                updated_at: new Date(),
+              },
+              event: {
+                id: 1,
+                system_id: 1,
+                identifier: 'identifier',
+                name: 'name',
+                operation: 'select',
+                description: 'description',
+                deleted: 0,
+                created_at: new Date(),
+                updated_at: new Date(),
+              },
+              contract: {
+                id: 1,
+                action_id: 1,
+                event_id: 1,
+                identifier: 'ident',
+                name: 'name',
+                active: 1,
+                deleted: 0,
+                created_at: new Date(),
+                updated_at: new Date(),
+              },
+              action_security: {
+                id: 1,
+                action_id: 1,
+                type: 'select',
+                http_configuration: { url: 'http' },
+                json_path_exp: 'exp',
+                updated_at: new Date(),
+              },
+            },
+          ],
+        };
+        res.json = jest.fn();
+        res.status = jest.fn().mockReturnThis();
+        return res;
+      };
+      const res = mockRes();
+
+      const req = {
+        body: { bod: 'x' },
+        headers: { auth: 'x' },
+      } as any as Request;
+
+      const knexMock = {
+        table: jest.fn().mockReturnThis(),
+        insert: jest.fn().mockResolvedValue([1]),
+      };
+      const eventControllers = new EventControllers(knexMock as any);
+      await eventControllers.manageEvent(req, res);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        code: 20000,
+        message: 'success',
+      });
+    });
+
+    it('Manage event correct not correct locals', async () => {
+      const mockRes = () => {
+        const res = {} as Response;
+        res.locals = {
+          eventId: 1,
+        };
+        res.json = jest.fn();
+        res.status = jest.fn().mockReturnThis();
+        return res;
+      };
+      const res = mockRes();
+
+      const req = {
+        body: { bod: 'x' },
+        headers: { auth: 'x' },
+      } as any as Request;
+
+      const knexMock = {
+        table: jest.fn().mockReturnThis(),
+        insert: jest.fn().mockResolvedValue([1]),
+      };
+      const eventControllers = new EventControllers(knexMock as any);
+      await eventControllers.manageEvent(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
         code: 400020,
         message: 'Event Id or Event Contract List was not send.',
       });
     });
 
-    it('Not event id is NaN', async () => {
-      const mockReq = () => {
-        const req: Request = {} as Request;
-        return req;
+    it('Manage event correct not a number for eventId', async () => {
+      const mockRes = () => {
+        const res = {} as Response;
+        res.locals = {
+          eventId: 'nan',
+          eventContracts: [
+            {
+              action: {
+                id: 1,
+                system_id: 1,
+                identifier: 'identifier',
+                name: 'name',
+                http_configuration: {
+                  auth: 'x',
+                },
+                operation: 'select',
+                description: 'description',
+                deleted: 1,
+                created_at: new Date(),
+                updated_at: new Date(),
+              },
+              event: {
+                id: 1,
+                system_id: 1,
+                identifier: 'identifier',
+                name: 'name',
+                operation: 'select',
+                description: 'description',
+                deleted: 0,
+                created_at: new Date(),
+                updated_at: new Date(),
+              },
+              contract: {
+                id: 1,
+                action_id: 1,
+                event_id: 1,
+                identifier: 'ident',
+                name: 'name',
+                active: 1,
+                deleted: 0,
+                created_at: new Date(),
+                updated_at: new Date(),
+              },
+              action_security: {
+                id: 1,
+                action_id: 1,
+                type: 'select',
+                http_configuration: { url: 'http' },
+                json_path_exp: 'exp',
+                updated_at: new Date(),
+              },
+            },
+          ],
+        };
+        res.json = jest.fn();
+        res.status = jest.fn().mockReturnThis();
+        return res;
       };
+      const res = mockRes();
 
-      const localRes = mockRes();
+      const req = {
+        body: { bod: 'x' },
+        headers: { auth: 'x' },
+      } as any as Request;
 
-      localRes.locals.eventId = 'xsd';
-      localRes.locals.eventContracts = [];
-
-      await eventControllers.manageEvent(mockReq(), localRes);
-      expect(localRes.status).toHaveBeenCalledWith(400);
-      expect(localRes.json).toHaveBeenCalledWith({
+      const knexMock = {
+        table: jest.fn().mockReturnThis(),
+        insert: jest.fn().mockResolvedValue([1]),
+      };
+      const eventControllers = new EventControllers(knexMock as any);
+      await eventControllers.manageEvent(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
         code: 400020,
         message: 'Event Id is not a number.',
       });
     });
 
-    it('Contract is not an array', async () => {
-      const mockReq = () => {
-        const req: Request = {} as Request;
-        return req;
+    it('Manage event correct not an array', async () => {
+      const mockRes = () => {
+        const res = {} as Response;
+        res.locals = {
+          eventId: 1,
+          eventContracts: 1,
+        };
+        res.json = jest.fn();
+        res.status = jest.fn().mockReturnThis();
+        return res;
       };
+      const res = mockRes();
 
-      const localRes = mockRes();
+      const req = {
+        body: { bod: 'x' },
+        headers: { auth: 'x' },
+      } as any as Request;
 
-      localRes.locals.eventId = 1;
-      localRes.locals.eventContracts = 2;
-
-      await eventControllers.manageEvent(mockReq(), localRes);
-      expect(localRes.status).toHaveBeenCalledWith(400);
-      expect(localRes.json).toHaveBeenCalledWith({
+      const knexMock = {
+        table: jest.fn().mockReturnThis(),
+        insert: jest.fn().mockResolvedValue([1]),
+      };
+      const eventControllers = new EventControllers(knexMock as any);
+      await eventControllers.manageEvent(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
         code: 400020,
         message: 'Event Contract is not an array.',
       });
     });
 
-    it('Correct management', async () => {
-      const mockReq = () => {
-        const req: Request = {} as Request;
-        return req;
-      };
-
-      const localRes = mockRes();
-
-      localRes.locals.eventId = 1;
-      localRes.locals.eventContracts = [
-        {
-          action: { http_configuration: { url: 'url' } },
-          contract: { identifier: 'aniden' },
-        },
-      ];
-
-      const spy = jest
-        .spyOn(eventControllers, 'createAxiosObservable')
-        .mockReturnValue(
-          of({
-            data: { someData: 'someData' },
-            status: 200,
-            statusText: '',
-            headers: { someData: 'someData' },
-            config: { url: 'someData' },
-          }),
-        );
-      await eventControllers.manageEvent(mockReq(), localRes);
-      expect(spy).toBeCalledTimes(1);
-      spy.mockRestore();
-      expect(localRes.status).toHaveBeenCalledWith(200);
-      expect(localRes.json).toHaveBeenCalledWith({
-        code: 20000,
-        message: 'success',
-      });
-    });
-
-    it('Correct management but it errors', async () => {
-      const mockReq = () => {
-        const req: Request = {} as Request;
-        return req;
-      };
-
-      const localRes = mockRes();
-
-      localRes.locals.eventId = 1;
-      localRes.locals.eventContracts = [
-        {
-          action: { http_configuration: { url: 'url' } },
-          contract: { identifier: 'aniden' },
-        },
-      ];
-
-      const spy = jest
-        .spyOn(eventControllers, 'createAxiosObservable')
-        .mockReturnValue(throwError(() => new Error('test')));
-      await eventControllers.manageEvent(mockReq(), localRes);
-      expect(spy).toBeCalledTimes(1);
-      spy.mockRestore();
-      expect(localRes.status).toHaveBeenCalledWith(200);
-      expect(localRes.json).toHaveBeenCalledWith({
-        code: 20000,
-        message: 'success',
-      });
-    });
-
-    it('500 error sql', async () => {
-      const mockReq = () => {
-        const req: Request = {} as Request;
-        return req;
-      };
-
-      const localRes = mockRes();
-
-      localRes.locals.eventId = 1;
-      localRes.locals.eventContracts = [
-        {
-          action: { http_configuration: { url: 'url' } },
-          contract: { identifier: 'aniden' },
-        },
-      ];
-
-      await eventControllers.manageEvent(mockReq(), localRes);
-
-      expect(localRes.status).toHaveBeenCalledWith(500);
-      expect(localRes.json).toHaveBeenCalledWith({
-        code: 500001,
-        message: `Data base error, with code 1`,
-      });
-    });
-  });
-
-  describe('Gets all of the recived event', () => {
-    let eventControllers: EventControllers;
-    beforeAll(() => {
-      eventControllers = new EventControllers(knex({}));
-    });
-    it('Validates that receives a page size and that it is a number, not receives it', async () => {
-      const mockReq = () => {
-        const req: Request = {} as Request;
-        req.query = {
-          'page-size': 'xsd',
+    it('Manage event fails', async () => {
+      const mockRes = () => {
+        const res = {} as Response;
+        res.locals = {
+          eventId: 1,
+          eventContracts: [
+            {
+              action: {
+                id: 1,
+                system_id: 1,
+                identifier: 'identifier',
+                name: 'name',
+                http_configuration: {
+                  auth: 'x',
+                },
+                operation: 'select',
+                description: 'description',
+                deleted: 1,
+                created_at: new Date(),
+                updated_at: new Date(),
+              },
+              event: {
+                id: 1,
+                system_id: 1,
+                identifier: 'identifier',
+                name: 'name',
+                operation: 'select',
+                description: 'description',
+                deleted: 0,
+                created_at: new Date(),
+                updated_at: new Date(),
+              },
+              contract: {
+                id: 1,
+                action_id: 1,
+                event_id: 1,
+                identifier: 'ident',
+                name: 'name',
+                active: 1,
+                deleted: 0,
+                created_at: new Date(),
+                updated_at: new Date(),
+              },
+              action_security: {
+                id: 1,
+                action_id: 1,
+                type: 'select',
+                http_configuration: { url: 'http' },
+                json_path_exp: 'exp',
+                updated_at: new Date(),
+              },
+            },
+          ],
         };
-        return req;
+        res.json = jest.fn();
+        res.status = jest.fn().mockReturnThis();
+        return res;
       };
-      const mockResponse = mockRes();
-      await eventControllers.listReceivedEvents(mockReq(), mockResponse);
-      expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.json).toHaveBeenCalledWith(listPaginatedSizeFour);
-    });
+      const res = mockRes();
 
-    it('Validates that receives a page size and that it is a number, receives it', async () => {
-      const mockReq = () => {
-        const req: Request = {} as Request;
-        req.query = {
-          'page-size': '2',
-        };
-        return req;
+      const req = {
+        body: { bod: 'x' },
+        headers: { auth: 'x' },
+      } as any as Request;
+
+      const knexMock = {
+        table: jest.fn().mockReturnThis(),
+        insert: jest.fn().mockRejectedValue(new Error('Async Error')),
       };
-      const mockResponse = mockRes();
-      await eventControllers.listReceivedEvents(mockReq(), mockResponse);
-      expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.json).toHaveBeenCalledWith(listPaginatedSizeTwo);
-    });
-
-    it('500 error sql', async () => {
-      const mockReq = () => {
-        const req: Request = {} as Request;
-        req.query = {
-          'page-size': '2',
-        };
-        return req;
-      };
-
-      const mockResponse = mockRes();
-
-      mockResponse.locals.eventId = 1;
-
-      await eventControllers.listReceivedEvents(mockReq(), mockResponse);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        code: 500001,
-        message: `Data base error, with code 1`,
-      });
+      const eventControllers = new EventControllers(knexMock as any);
+      await eventControllers.manageEvent(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
     });
   });
 });

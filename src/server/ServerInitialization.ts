@@ -10,7 +10,7 @@ import {
   IExpressNecessaryParams,
 } from './util/ExpressNecessary';
 import knex, { Knex } from 'knex';
-import { getConfig } from '../config/main.config';
+import { getConfig } from '../../config/main.config';
 import OauthBoot from 'nodeboot-oauth2-starter';
 
 /**

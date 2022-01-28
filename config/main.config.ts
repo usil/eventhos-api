@@ -5,7 +5,7 @@ const envSettings = new EnvSettings();
 
 import path from 'path';
 import bunyan from 'bunyan';
-import pjs from '../../package.json';
+import pjs from '../package.json';
 import ConfigGlobalDto from './config.dto';
 
 // * Obtains the JSON package
@@ -22,12 +22,7 @@ let configuration: Partial<typeof ConfigGlobalDto>;
  */
 export const getConfig = () => {
   const settings = envSettings.loadJsonFileSync(
-    path.resolve(
-      __dirname,
-      process.env.NODE_ENV === 'production'
-        ? '../settings.json'
-        : '../../settings.json',
-    ),
+    path.resolve(__dirname, '../settings.json'),
   );
 
   configuration = settings;
@@ -38,7 +33,7 @@ export const getConfig = () => {
 
   configuration.port = parseInt(settings.port);
 
-  configuration.cpuCount = parseInt(settings.cpuCount) || 1;
+  configuration.cpuCount = parseInt(settings.cpuCount);
 
   configuration.log = (): bunyan =>
     getLogger(process.env.NODE_ENV.toUpperCase(), version);
