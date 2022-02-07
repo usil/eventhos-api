@@ -9,7 +9,10 @@ import {
   Contract,
   Event,
 } from '../dtos/eventhosInterface';
+import bcrypt from 'bcrypt';
 import colors from 'colors';
+import jwt from 'jsonwebtoken';
+import { getConfig } from '../../../config/main.config';
 
 class EventControllers {
   knexPool: Knex;
@@ -34,17 +37,15 @@ class EventControllers {
       }
 
       const event = (await this.knexPool
-        .select('system.key', 'event.identifier', 'event.id')
+        .select('system.client_id', 'event.identifier', 'event.id')
         .from('event')
         .join('system', 'system.id', 'event.system_id')
         .first()
         .where('event.identifier', eventIdentifier)) as {
-        key: string;
+        client_id: number;
         identifier: string;
         id: number;
       };
-
-      console.log(event);
 
       if (!event) {
         return res.status(404).json({
@@ -53,15 +54,53 @@ class EventControllers {
         });
       }
 
-      if (event.key !== systemKey) {
-        return res.status(403).json({
-          code: 400023,
-          message: `Key incorrect.`,
+      const client = (
+        await this.knexPool
+          .table('OAUTH2_Clients')
+          .select()
+          .where('id', event.client_id)
+          .andWhere('deleted', false)
+      )[0];
+
+      if (!client) {
+        return res.status(404).json({
+          code: 400004,
+          message: `The client does not exist.`,
         });
       }
 
-      res.locals.eventId = event.id;
-      return next();
+      if (client.revoked) {
+        return res.status(403).json({
+          code: 400023,
+          message: `The client access has been revoked.`,
+        });
+      }
+
+      if (client.access_token) {
+        const tokenResult = await bcrypt.compare(
+          systemKey,
+          client.access_token,
+        );
+        if (tokenResult) {
+          res.locals.eventId = event.id;
+          return next();
+        }
+        return res.status(401).json({
+          code: 400001,
+          message: 'Incorrect token',
+        });
+      }
+
+      jwt.verify(systemKey, getConfig().jwtSecret, (err: any, decode: any) => {
+        if (err) {
+          return res.status(401).json({
+            code: 400001,
+            message: 'Incorrect token',
+          });
+        }
+        res.locals.eventId = event.id;
+        return next();
+      });
     } catch (error) {
       this.returnError(error, res);
     }
@@ -98,7 +137,7 @@ class EventControllers {
       }[];
       if (eventContracts.length === 0) {
         return res.status(203).json({
-          code: 20031,
+          code: 200310,
           message: 'success, but no contracts exists for this event',
         });
       }

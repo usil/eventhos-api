@@ -44,6 +44,7 @@ class ServerInitialization
       localApp,
       this.knexAuthDataBase,
       this.configuration.jwtSecret,
+      this.configuration.cryptoKey,
     );
 
     this.app = oauthBoot.expressSecured;
@@ -90,7 +91,7 @@ class ServerInitialization
         port: this.configuration.dataBasePort,
         user: this.configuration.dataBaseUser,
         password: this.configuration.dataBasePassword,
-        database: 'auth_eventhos',
+        database: this.configuration.dataBaseName,
       },
       pool: { min: 0, max: 5 },
     });

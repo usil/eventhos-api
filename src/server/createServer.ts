@@ -1,6 +1,6 @@
 import ServerInitialization from './ServerInitialization';
-import { createRouteExample } from './routes/exampleRoute';
 import { createRouteEvent } from './routes/eventRoute';
+import { createRouteSystem } from './routes/systemRoutes';
 
 /**
  * @description Creates the server
@@ -14,14 +14,17 @@ export const newServer = async (port: number) => {
 
   await serverInit.init();
 
-  const routeExample = createRouteExample();
-  serverInit.addRoutes(routeExample);
-
   const routeEvent = createRouteEvent(
     serverInit.knexPool,
     serverInit.oauthBoot,
   );
   serverInit.addRoutes(routeEvent);
+
+  const routeSystem = createRouteSystem(
+    serverInit.knexPool,
+    serverInit.oauthBoot,
+  );
+  serverInit.addRoutes(routeSystem);
 
   const server = serverInit.createServer();
 

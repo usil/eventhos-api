@@ -12,7 +12,10 @@ export const createRouteEvent = (knexPool: Knex, oauthBoot: any): Route => {
 
   const controllers = new EventControllers(knexPool);
 
-  const authRouter = oauthBoot.bootOauthExpressRouter(eventRoute.router);
+  const authRouter = oauthBoot.bootOauthExpressRouter(
+    eventRoute.router,
+    routeName,
+  );
 
   authRouter.obPost(
     '/',

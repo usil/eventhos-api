@@ -1,14 +1,13 @@
-import {
-  basicContent,
-  listPaginatedSizeFour,
-  listPaginatedSizeTwo,
-} from '../listRecivedEvents.mocked';
+import { basicContent } from '../listRecivedEvents.mocked';
 import EventControllers from '../../../src/server/controllers/event.controller';
 import { Request, Response } from 'express';
 import knex, { Knex } from 'knex';
 import axios from 'axios';
-import { firstValueFrom, of, throwError } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import ReceivedEvent from '../../../src/server/dtos/RecivedEvent.dto';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+
 jest.mock('axios', () => jest.fn());
 jest.mock('knex', () => {
   const mKnex = {
@@ -138,7 +137,7 @@ describe('Event routes work accordingly', () => {
       });
     });
 
-    it('Event validation middleware, correct message when producer key incorrect', async () => {
+    it('Event validation middleware, correct message when producer revoked', async () => {
       const mockedNext = jest.fn();
 
       const mockReq = () => {
@@ -154,16 +153,20 @@ describe('Event routes work accordingly', () => {
 
       const localKnexMock = mockKnex();
 
-      localKnexMock.where = jest
-        .fn()
-        .mockReturnValue(localKnexMock)
-        .mockResolvedValue({
-          key: 'asecurekey',
+      localKnexMock.andWhere = jest.fn().mockResolvedValue([
+        {
+          revoked: true,
           identifier: 'new_profesor',
           id: 1,
-        });
+        },
+      ]);
+
+      localKnexMock.table = jest.fn().mockReturnValue(localKnexMock);
+
+      localKnexMock.where = jest.fn().mockReturnValue(localKnexMock);
 
       eventControllers.knexPool = localKnexMock;
+
       await eventControllers.eventValidation(
         mockReq(),
         mockResponse,
@@ -173,18 +176,18 @@ describe('Event routes work accordingly', () => {
       expect(mockResponse.status).toHaveBeenCalledWith(403);
       expect(mockResponse.json).toHaveBeenCalledWith({
         code: 400023,
-        message: `Key incorrect.`,
+        message: `The client access has been revoked.`,
       });
     });
 
-    it('Event validation middleware, correct message', async () => {
+    it('Event validation middleware, correct message when client does not exist', async () => {
       const mockedNext = jest.fn();
 
       const mockReq = () => {
         const req: Request = {} as Request;
         req.query = {
           'event-identifier': 'new_profesor',
-          'access-key': 'asecurekey',
+          'access-key': 'notasecurekey',
         };
         return req;
       };
@@ -193,14 +196,12 @@ describe('Event routes work accordingly', () => {
 
       const localKnexMock = mockKnex();
 
-      localKnexMock.where = jest
-        .fn()
-        .mockReturnValue(localKnexMock)
-        .mockResolvedValue({
-          key: 'asecurekey',
-          identifier: 'new_profesor',
-          id: 1,
-        });
+      localKnexMock.andWhere = jest.fn().mockResolvedValue([]);
+
+      localKnexMock.table = jest.fn().mockReturnValue(localKnexMock);
+
+      localKnexMock.where = jest.fn().mockReturnValue(localKnexMock);
+
       eventControllers.knexPool = localKnexMock;
 
       await eventControllers.eventValidation(
@@ -209,7 +210,157 @@ describe('Event routes work accordingly', () => {
         mockedNext,
       );
 
-      expect(mockedNext.mock.calls.length).toBe(1);
+      expect(mockResponse.status).toHaveBeenCalledWith(404);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        code: 400004,
+        message: `The client does not exist.`,
+      });
+    });
+
+    it('Event validation middleware, correct message when client has access_token', async () => {
+      const mockedNext = jest.fn();
+
+      const mockReq = () => {
+        const req: Request = {} as Request;
+        req.query = {
+          'event-identifier': 'new_profesor',
+          'access-key': 'notasecurekey',
+        };
+        return req;
+      };
+
+      const bcryptSpy = jest
+        .spyOn(bcrypt, 'compare')
+        .mockResolvedValue(true as never);
+
+      const mockResponse = mockRes();
+
+      const localKnexMock = mockKnex();
+
+      localKnexMock.andWhere = jest.fn().mockResolvedValue([
+        {
+          revoked: false,
+          access_token: 'token',
+          identifier: 'new_profesor',
+          id: 1,
+        },
+      ]);
+
+      localKnexMock.table = jest.fn().mockReturnValue(localKnexMock);
+
+      localKnexMock.where = jest.fn().mockReturnValue(localKnexMock);
+
+      eventControllers.knexPool = localKnexMock;
+
+      await eventControllers.eventValidation(
+        mockReq(),
+        mockResponse,
+        mockedNext,
+      );
+
+      expect(bcryptSpy).toHaveBeenCalled();
+      expect(mockedNext).toHaveBeenCalled();
+
+      expect(mockResponse.locals.eventId).toBe(undefined);
+
+      bcryptSpy.mockRestore();
+    });
+
+    it('Event validation middleware, correct message when client has no access_token', async () => {
+      const mockedNext = jest.fn();
+
+      const mockReq = () => {
+        const req: Request = {} as Request;
+        req.query = {
+          'event-identifier': 'new_profesor',
+          'access-key': 'notasecurekey',
+        };
+        return req;
+      };
+
+      const jwtSpy = jest.spyOn(jwt, 'verify');
+
+      const mockResponse = mockRes();
+
+      const localKnexMock = mockKnex();
+
+      localKnexMock.andWhere = jest.fn().mockResolvedValue([
+        {
+          revoked: false,
+          identifier: 'new_profesor',
+          id: 1,
+        },
+      ]);
+
+      localKnexMock.table = jest.fn().mockReturnValue(localKnexMock);
+
+      localKnexMock.where = jest.fn().mockReturnValue(localKnexMock);
+
+      eventControllers.knexPool = localKnexMock;
+
+      await eventControllers.eventValidation(
+        mockReq(),
+        mockResponse,
+        mockedNext,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalled();
+      expect(jwtSpy).toHaveBeenCalled();
+
+      expect(mockResponse.locals.eventId).toBe(undefined);
+      jwtSpy.mockRestore();
+    });
+
+    it('Event validation middleware, correct message when client has access_token but incorrect', async () => {
+      const mockedNext = jest.fn();
+
+      const mockReq = () => {
+        const req: Request = {} as Request;
+        req.query = {
+          'event-identifier': 'new_profesor',
+          'access-key': 'notasecurekey',
+        };
+        return req;
+      };
+
+      const bcryptSpy = jest
+        .spyOn(bcrypt, 'compare')
+        .mockResolvedValue(false as never);
+
+      const mockResponse = mockRes();
+
+      const localKnexMock = mockKnex();
+
+      localKnexMock.andWhere = jest.fn().mockResolvedValue([
+        {
+          revoked: false,
+          access_token: 'token',
+          identifier: 'new_profesor',
+          id: 1,
+        },
+      ]);
+
+      localKnexMock.table = jest.fn().mockReturnValue(localKnexMock);
+
+      localKnexMock.where = jest.fn().mockReturnValue(localKnexMock);
+
+      eventControllers.knexPool = localKnexMock;
+
+      await eventControllers.eventValidation(
+        mockReq(),
+        mockResponse,
+        mockedNext,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(401);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        code: 400001,
+        message: `Incorrect token`,
+      });
+
+      expect(bcryptSpy).toHaveBeenCalled();
+
+      bcryptSpy.mockRestore();
     });
 
     it('Error 500', async () => {

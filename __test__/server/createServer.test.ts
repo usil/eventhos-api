@@ -1,6 +1,5 @@
 import { newServer } from '../../src/server/createServer';
 import { Server } from 'http';
-import express from 'express';
 
 describe('Correct app creation', () => {
   let server: Server;
