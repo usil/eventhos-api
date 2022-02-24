@@ -45,6 +45,9 @@ class ServerInitialization
       this.knexAuthDataBase,
       this.configuration.jwtSecret,
       this.configuration.cryptoKey,
+      [],
+      'eventhos_api',
+      '::usil.app',
     );
 
     this.app = oauthBoot.expressSecured;

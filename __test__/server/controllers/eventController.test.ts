@@ -41,6 +41,7 @@ jest.mock('knex', () => {
       ])
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce({ sqlState: 1 }),
+    andWhere: jest(),
     options: jest.fn().mockReturnThis(),
   };
   return jest.fn(() => mKnex);
@@ -72,6 +73,7 @@ describe('Event routes work accordingly', () => {
       knex.first = jest.fn().mockReturnValue(knex);
       knex.select = jest.fn().mockReturnValue(knex);
       knex.where = jest.fn().mockReturnValue(knex);
+      knex.andWhere = jest.fn().mockReturnValue(knex);
       return knex;
     };
 
@@ -117,7 +119,7 @@ describe('Event routes work accordingly', () => {
 
       const localKnexMock = mockKnex();
 
-      localKnexMock.where = jest
+      localKnexMock.andWhere = jest
         .fn()
         .mockReturnValue(localKnexMock)
         .mockResolvedValue(undefined);

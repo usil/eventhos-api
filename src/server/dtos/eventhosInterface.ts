@@ -1,5 +1,3 @@
-import { AxiosRequestConfig } from 'axios';
-
 export interface Event {
   id: number;
   system_id: number;
@@ -17,7 +15,7 @@ export interface Action {
   system_id: number;
   identifier: string;
   name: string;
-  http_configuration: AxiosRequestConfig;
+  http_configuration: string;
   operation: Operations;
   description: string;
   deleted: number;
@@ -37,12 +35,22 @@ export interface Contract {
   updated_at: Date;
 }
 
+export interface ContractJoined {
+  id: number;
+  eventIdentifier: string;
+  actionIdentifier: string;
+  name: string;
+  active: number;
+  producerName: string;
+  consumerName: string;
+}
+
 export interface ActionSecurity {
   id: number;
   action_id: number;
   type: string;
-  http_configuration?: AxiosRequestConfig;
-  json_path_exp?: string;
+  http_configuration?: string;
+  json_path?: string;
   updated_at: Date;
 }
 

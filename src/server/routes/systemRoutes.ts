@@ -19,5 +19,27 @@ export const createRouteSystem = (knexPool: Knex, oauthBoot: any): Route => {
 
   authRouter.obPost('/', 'system:create', controllers.createSystem);
 
+  authRouter.obGet('/', 'system:select', controllers.getSystems);
+
+  authRouter.obGet('/:id', 'system:select', controllers.getSystem);
+
+  authRouter.obGet(
+    '/:id/actions',
+    'system:select',
+    controllers.getSystemActions,
+  );
+
+  authRouter.obPut('/:id', 'system:update', controllers.updateSystem);
+
+  authRouter.obDelete('/:id', 'system:delete', controllers.deleteSystem);
+
+  authRouter.obGet('/:id/events', 'system:select', controllers.getSystemEvents);
+
+  authRouter.obGet(
+    '/:id/actions',
+    'system:select',
+    controllers.getSystemActions,
+  );
+
   return eventRoute;
 };

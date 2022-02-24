@@ -13,6 +13,10 @@ import bcrypt from 'bcrypt';
 import colors from 'colors';
 import jwt from 'jsonwebtoken';
 import { getConfig } from '../../../config/main.config';
+import crypto from 'crypto';
+import jp from 'jsonpath';
+import { ParsedQs } from 'qs';
+import controllerHelpers from './helpers/controller-helpers';
 
 class EventControllers {
   knexPool: Knex;
@@ -41,7 +45,8 @@ class EventControllers {
         .from('event')
         .join('system', 'system.id', 'event.system_id')
         .first()
-        .where('event.identifier', eventIdentifier)) as {
+        .where('event.identifier', eventIdentifier)
+        .andWhere('event.deleted', false)) as {
         client_id: number;
         identifier: string;
         id: number;
@@ -98,8 +103,17 @@ class EventControllers {
             message: 'Incorrect token',
           });
         }
-        res.locals.eventId = event.id;
-        return next();
+        const subject = decode.data;
+        console.log(subject);
+        console.log(client);
+        if (subject.id == client.client_id) {
+          res.locals.eventId = event.id;
+          return next();
+        }
+        return res.status(401).json({
+          code: 400001,
+          message: 'Incorrect token',
+        });
       });
     } catch (error) {
       this.returnError(error, res);
@@ -129,7 +143,8 @@ class EventControllers {
         .join('action', 'contract.action_id', 'action.id')
         .join('action_security', 'action.id', 'action_security.action_id')
         .options({ nestTables: true })
-        .where('contract.event_id', res.locals.eventId)) as {
+        .where('contract.event_id', res.locals.eventId)
+        .andWhere('contract.deleted', false)) as {
         action: Action;
         event: Event;
         contract: Contract;
@@ -190,27 +205,108 @@ class EventControllers {
         body: JSON.stringify(req.body),
       });
 
+      const parsedReq = {
+        headers: req.headers,
+        query: req.query,
+        body: req.body,
+        oauthResponse: {} as {
+          headers: Record<string, string>;
+          body: Record<string, any>;
+        },
+      };
+
       console.log(
         colors.yellow.bgBlack(
           `${receivedEvent} wil be executed at ${new Date().toLocaleString()}:${new Date().getMilliseconds()}`,
         ),
       );
 
-      //TODO: PARAMETERIZE FORWARD-HEADERS
-
-      // delete req.headers['content-length'];
-
-      // const nextRequestHeaders = req.headers as AxiosRequestHeaders;
+      const algorithm = 'aes-256-ctr';
 
       for (const contract of eventContracts) {
-        this.createAxiosObservable({
-          ...contract.action.http_configuration,
-          data: req.body,
-          headers: {
-            // ...nextRequestHeaders,
-            ...contract.action.http_configuration.headers,
-          },
-        })
+        if (contract.action_security.type === 'oauth2_client') {
+          const authKeySplit =
+            contract.action_security.http_configuration.split('|.|');
+          const encryptedAuthSecret = authKeySplit[1];
+          const initAuthVector = Buffer.from(authKeySplit[0], 'hex');
+          const authKey = crypto.scryptSync(getConfig().cryptoKey, 'salt', 32);
+          const authDecipher = crypto.createDecipheriv(
+            algorithm,
+            authKey,
+            initAuthVector,
+          );
+
+          let decryptedAuthData = authDecipher.update(
+            encryptedAuthSecret,
+            'hex',
+            'utf-8',
+          );
+
+          decryptedAuthData += authDecipher.final('utf8');
+
+          const jsonAxiosBaseAuthConfig = JSON.parse(
+            decryptedAuthData,
+          ) as AxiosRequestConfig;
+
+          const authResult = await axios(jsonAxiosBaseAuthConfig);
+
+          parsedReq.oauthResponse = {
+            body: authResult.data,
+            headers: authResult.headers,
+          };
+        }
+
+        const keySplit = contract.action.http_configuration.split('|.|');
+        const encryptedSecret = keySplit[1];
+        const initVector = Buffer.from(keySplit[0], 'hex');
+        const key = crypto.scryptSync(getConfig().cryptoKey, 'salt', 32);
+        const decipher = crypto.createDecipheriv(algorithm, key, initVector);
+
+        let decryptedData = decipher.update(encryptedSecret, 'hex', 'utf-8');
+
+        decryptedData += decipher.final('utf8');
+
+        const jsonAxiosBaseConfig = JSON.parse(
+          decryptedData,
+        ) as AxiosRequestConfig;
+
+        const parsedHeaders: Record<string, string> = {};
+        const parsedQueryParams: Record<string, string> = {};
+        const parsedBody: Record<string, any> = {};
+
+        for (const headerKey in jsonAxiosBaseConfig.headers) {
+          const header = jsonAxiosBaseConfig.headers[headerKey];
+          const parsedHeader = this.getVariables(header, 0, parsedReq);
+          parsedHeaders[headerKey] = parsedHeader;
+        }
+
+        for (const paramKey in jsonAxiosBaseConfig.params) {
+          const param = jsonAxiosBaseConfig.params[paramKey];
+          const parsedParam = this.getVariables(param, 0, parsedReq);
+          parsedQueryParams[paramKey] = parsedParam;
+        }
+
+        for (const dataKey in jsonAxiosBaseConfig.data) {
+          const data = jsonAxiosBaseConfig.data[dataKey];
+          const parsedData = this.getVariables(data, 0, parsedReq);
+          let finalStageParsedData: any = parsedData;
+          if (!isNaN(parsedData as any)) {
+            finalStageParsedData = Number(parsedData);
+          } else if (this.IsJsonString(finalStageParsedData)) {
+            finalStageParsedData = JSON.parse(parsedData);
+          }
+          parsedBody[dataKey] = finalStageParsedData;
+        }
+
+        const httpConfiguration: AxiosRequestConfig = {
+          url: jsonAxiosBaseConfig.url,
+          method: jsonAxiosBaseConfig.method,
+          headers: { ...parsedHeaders },
+          params: { ...parsedQueryParams },
+          data: { ...req.body, ...parsedBody },
+        };
+
+        this.createAxiosObservable(httpConfiguration)
           .pipe(take(1))
           .subscribe({
             complete: () =>
@@ -221,14 +317,30 @@ class EventControllers {
                   } completed at ${new Date().toLocaleString()}:${new Date().getMilliseconds()}`,
                 ),
               ),
-            next: (res) => {
+            next: async (res) => {
               console.log(
                 'header',
                 colors.magenta(JSON.stringify(res.headers)),
               );
               console.log('body', colors.green(JSON.stringify(res.data)));
+              const excDetail = await this.knexPool
+                .table('contract_exc_detail')
+                .insert({
+                  contract_id: contract.contract.id,
+                  recived_event_id: receivedEvent[0],
+                  state: 'processed',
+                });
+              console.log(excDetail);
             },
-            error: (error) => {
+            error: async (error) => {
+              const excDetail = await this.knexPool
+                .table('contract_exc_detail')
+                .insert({
+                  contract_id: contract.contract.id,
+                  recived_event_id: receivedEvent[0],
+                  state: 'error',
+                });
+              console.log(excDetail);
               if (error.response) {
                 console.log(error.response.data);
                 console.log(error.response.status);
@@ -248,38 +360,67 @@ class EventControllers {
     }
   };
 
+  IsJsonString = (str: string) => {
+    try {
+      JSON.parse(str);
+    } catch (e) {
+      return false;
+    }
+    return true;
+  };
+
+  getVariables = (
+    value: string,
+    searchStartIndex: number,
+    parsedRequest: {
+      headers: Record<string, string | string[]>;
+      query: Record<string, string | ParsedQs | string[] | ParsedQs[]>;
+      body: Record<string, any>;
+    },
+  ): string => {
+    const variableStartIndex = value.indexOf('${', 0 + searchStartIndex);
+
+    if (
+      variableStartIndex === -1 &&
+      value.charAt(variableStartIndex + 2) !== '.'
+    ) {
+      return value;
+    }
+
+    const variableEndIndex = value.indexOf('}', variableStartIndex + 1);
+
+    if (variableEndIndex === -1) {
+      return value;
+    }
+
+    const variableString = value.substring(
+      variableStartIndex + 2,
+      variableEndIndex,
+    );
+
+    const jsonPath = '$' + variableString;
+
+    let pathValue = jp.query(parsedRequest, jsonPath)[0];
+
+    if (typeof pathValue !== 'string') {
+      pathValue = JSON.stringify(pathValue);
+    }
+
+    const valueToReplace = '${' + variableString + '}';
+
+    const newValue = value.replace(valueToReplace, pathValue);
+
+    return this.getVariables(newValue, variableEndIndex + 1, parsedRequest);
+  };
+
   /**
    *
    * @description List all of the received events
    */
   listReceivedEvents = async (req: Request, res: Response) => {
     try {
-      let itemsPerPage = 5;
-      let pageIndex = 0;
-      let order = 'asc';
-
-      if (
-        req.query['itemsPerPage'] &&
-        parseInt(req.query['itemsPerPage'] as string) >= 1
-      ) {
-        itemsPerPage = parseInt(req.query['itemsPerPage'] as string);
-      }
-
-      if (
-        req.query['pageIndex'] &&
-        parseInt(req.query['pageIndex'] as string) >= 0
-      ) {
-        pageIndex = parseInt(req.query['pageIndex'] as string);
-      }
-
-      if (
-        req.query['order'] &&
-        (req.query['order'] === 'desc' || req.query['order'] === 'asc')
-      ) {
-        order = req.query['order'];
-      }
-
-      const offset = itemsPerPage * pageIndex;
+      const { itemsPerPage, offset, pageIndex, order } =
+        controllerHelpers.getPaginationData(req);
 
       const totalReceivedEventCount = (
         await this.knexPool('received_event').count()
@@ -289,17 +430,18 @@ class EventControllers {
         parseInt(totalReceivedEventCount as string) / itemsPerPage,
       );
 
-      const receivedEvents = (await (this.knexPool as any)({
+      const receivedEvents = (await this.knexPool({
         received_event: this.knexPool('received_event')
           .limit(itemsPerPage)
           .offset(offset)
           .orderBy('received_event.id', order),
-      })
+      } as any)
         .select(
           'received_event.id',
           'system.id as systemId',
           'event.id as eventId',
           'system.name as systemName',
+          'contract_exc_detail.state',
           'system.identifier as systemIdentifier',
           'event.name as eventName',
           'event.identifier as eventIdentifier',
@@ -307,6 +449,11 @@ class EventControllers {
           'header',
           'body',
           'recived_at as recivedAt',
+        )
+        .leftJoin(
+          'contract_exc_detail',
+          'contract_exc_detail.recived_event_id',
+          'received_event.id',
         )
         .join('event', 'event.id', 'received_event.event_id')
         .join('system', 'system.id', 'event.system_id')) as ReceivedEvent[];
@@ -318,12 +465,109 @@ class EventControllers {
           items: receivedEvents,
           pageIndex,
           itemsPerPage,
-          totalItems: totalPages,
+          totalItems: totalReceivedEventCount,
           totalPages,
         },
       });
     } catch (error) {
       this.returnError(error, res);
+    }
+  };
+
+  createEvent = async (req: Request, res: Response) => {
+    try {
+      const { system_id, identifier, name, operation, description } = req.body;
+      const insertResult = await this.knexPool.table('event').insert({
+        system_id,
+        identifier,
+        name,
+        operation,
+        description,
+      });
+      return res.status(201).json({
+        code: 200001,
+        message: 'success',
+        content: { eventId: insertResult[0] },
+      });
+    } catch (error) {
+      this.returnError(error, res);
+    }
+  };
+
+  updateEvent = async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name, operation, description } = req.body;
+      await this.knexPool
+        .table('event')
+        .update({
+          name,
+          operation,
+          description,
+        })
+        .where('id', id);
+      return res.status(201).json({
+        code: 200001,
+        message: 'success',
+      });
+    } catch (error) {
+      this.returnError(error, res);
+    }
+  };
+
+  deleteEvent = async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      await this.knexPool
+        .table('event')
+        .update('deleted', true)
+        .where('id', id);
+
+      return res.status(201).json({
+        code: 200001,
+        message: 'success',
+      });
+    } catch (error) {
+      this.returnError(error.message, res);
+    }
+  };
+
+  getEvents = async (req: Request, res: Response) => {
+    try {
+      const { itemsPerPage, offset, pageIndex, order, activeSort } =
+        controllerHelpers.getPaginationData(req);
+
+      const totalEventsCount = (
+        await this.knexPool.table('event').where('deleted', false).count()
+      )[0]['count(*)'];
+
+      const totalPages = Math.ceil(
+        parseInt(totalEventsCount as string) / itemsPerPage,
+      );
+
+      const eventsQuery = this.knexPool
+        .table('event')
+        .offset(offset)
+        .limit(itemsPerPage)
+        .orderBy(activeSort, order)
+        .where('deleted', false);
+
+      const systems = (await eventsQuery) as Event[];
+
+      return res.status(200).json({
+        code: 200000,
+        message: 'success',
+        content: {
+          items: systems,
+          pageIndex,
+          itemsPerPage,
+          totalItems: totalEventsCount,
+          totalPages,
+        },
+      });
+    } catch (error) {
+      this.returnError(error.message, res);
     }
   };
 

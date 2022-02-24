@@ -17,15 +17,23 @@ export const createRouteEvent = (knexPool: Knex, oauthBoot: any): Route => {
     routeName,
   );
 
+  authRouter.obPost('/', 'event:create', controllers.createEvent);
+
   authRouter.obPost(
-    '/',
+    '/received',
     ':',
     controllers.eventValidation,
     controllers.getEventContracts,
     controllers.manageEvent,
   );
 
-  authRouter.obGet('/', 'event:select', controllers.listReceivedEvents);
+  authRouter.obGet('/received', 'event:select', controllers.listReceivedEvents);
+
+  authRouter.obGet('/', 'event:select', controllers.getEvents);
+
+  authRouter.obPut('/:id', 'event:update', controllers.updateEvent);
+
+  authRouter.obDelete('/:id', 'event:delete', controllers.deleteEvent);
 
   return eventRoute;
 };
