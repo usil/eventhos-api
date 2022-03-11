@@ -177,6 +177,32 @@ class SystemController {
     try {
       const { id } = req.params;
 
+      const systemEvents = await this.knexPool
+        .table('event')
+        .select('id')
+        .where('system_id', id)
+        .andWhere('deleted', false);
+
+      if (systemEvents.length > 0) {
+        return res.status(400).json({
+          code: 400500,
+          message: 'System has conflicting events',
+        });
+      }
+
+      const systemActions = await this.knexPool
+        .table('action')
+        .select('id')
+        .where('system_id', id)
+        .andWhere('deleted', false);
+
+      if (systemActions.length > 0) {
+        return res.status(400).json({
+          code: 400500,
+          message: 'System has conflicting actions',
+        });
+      }
+
       await this.knexPool
         .table('system')
         .update('deleted', true)
@@ -194,11 +220,17 @@ class SystemController {
   updateSystem = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { name, type, description, systemClass } = req.body;
+      const { name, type, description, systemClass, clientId } = req.body;
 
       await this.knexPool
         .table('system')
-        .update({ name, type, description, class: systemClass })
+        .update({
+          name,
+          type,
+          description,
+          class: systemClass,
+          client_id: clientId ? clientId : null,
+        })
         .where('id', id);
 
       return res.status(201).json({

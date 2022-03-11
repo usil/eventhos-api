@@ -4,7 +4,7 @@
   "description": "A template to use knex with mysql",
   "main": "./dist/main.js",
   "scripts": {
-    "test": "cross-env NODE_ENV=test jest  --verbose --collectCoverage eventController.test.ts && jest-coverage-badges --output badges",
+    "test": "cross-env NODE_ENV=test jest  --verbose --collectCoverage actionController.test  && jest-coverage-badges --output badges",
     "test:watch": "npm test -- --watch",
     "build": "cross-env NODE_ENV=production webpack --config webpack.prod.js",
     "start": "cross-env NODE_ENV=production node --max-old-space-size=1192 ./dist/main.js | bunyan",
@@ -30,7 +30,7 @@
     "knex": "^0.95.14",
     "morgan": "^1.10.0",
     "mysql2": "^2.3.3",
-    "nodeboot-oauth2-starter": "git+https://github.com/usil/nodeboot-oauth2-starter.git#refactor/parts-to-resources",
+    "nodeboot-oauth2-starter": "git+https://github.com/usil/nodeboot-oauth2-starter.git#sprint-0.0.2",
     "rxjs": "^7.4.0",
     "throng": "^5.0.0",
     "tslib": "^2.3.1"

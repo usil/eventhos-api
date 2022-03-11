@@ -530,6 +530,51 @@ describe('System controllers works correctly', () => {
     expect(knex.update).toHaveBeenCalledWith({
       name: 'new name',
       type: 'new',
+      client_id: null,
+      description: 'new description',
+      class: 'hybrid',
+    });
+    expect(knex.where).toHaveBeenCalledWith('id', 1);
+
+    expect(res.status).toBeCalledWith(201);
+
+    expect(res.json).toBeCalledWith({
+      code: 200001,
+      message: 'success',
+    });
+  });
+
+  it('Update system works not client null', async () => {
+    const req = {
+      params: {
+        id: 1,
+      },
+      body: {
+        name: 'new name',
+        type: 'new',
+        description: 'new description',
+        systemClass: 'hybrid',
+        clientId: 1,
+      },
+    } as any as Request;
+
+    const res = mockRes();
+
+    const knex = {
+      table: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      where: jest.fn().mockResolvedValue(1),
+    } as any as Knex;
+
+    const systemController = new SystemControllers(knex);
+
+    await systemController.updateSystem(req, res);
+
+    expect(knex.table).toHaveBeenCalledWith('system');
+    expect(knex.update).toHaveBeenCalledWith({
+      name: 'new name',
+      type: 'new',
+      client_id: 1,
       description: 'new description',
       class: 'hybrid',
     });
@@ -572,6 +617,7 @@ describe('System controllers works correctly', () => {
     expect(knex.update).toHaveBeenCalledWith({
       name: 'new name',
       type: 'new',
+      client_id: null,
       description: 'new description',
       class: 'hybrid',
     });
@@ -593,14 +639,16 @@ describe('System controllers works correctly', () => {
     const knex = {
       table: jest.fn().mockReturnThis(),
       update: jest.fn().mockReturnThis(),
-      where: jest.fn().mockResolvedValue(1),
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockResolvedValue(1),
     } as any as Knex;
 
     const systemController = new SystemControllers(knex);
 
     await systemController.deleteSystem(req, res);
 
-    expect(knex.table).toHaveBeenCalledWith('system');
+    expect(knex.table).toHaveBeenCalledWith('event');
     expect(knex.update).toHaveBeenCalledWith('deleted', true);
     expect(knex.where).toHaveBeenCalledWith('id', 1);
 
@@ -609,6 +657,64 @@ describe('System controllers works correctly', () => {
     expect(res.json).toBeCalledWith({
       code: 200001,
       message: 'success',
+    });
+  });
+
+  it('Delete system works, with conflicting events', async () => {
+    const req = {
+      params: {
+        id: 1,
+      },
+    } as any as Request;
+
+    const res = mockRes();
+
+    const knex = {
+      table: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockResolvedValue([1]),
+    } as any as Knex;
+
+    const systemController = new SystemControllers(knex);
+
+    await systemController.deleteSystem(req, res);
+
+    expect(res.status).toBeCalledWith(400);
+
+    expect(res.json).toBeCalledWith({
+      code: 400500,
+      message: 'System has conflicting events',
+    });
+  });
+
+  it('Delete system works, with conflicting actions', async () => {
+    const req = {
+      params: {
+        id: 1,
+      },
+    } as any as Request;
+
+    const res = mockRes();
+
+    const knex = {
+      table: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([1]),
+    } as any as Knex;
+
+    const systemController = new SystemControllers(knex);
+
+    await systemController.deleteSystem(req, res);
+
+    expect(res.status).toBeCalledWith(400);
+
+    expect(res.json).toBeCalledWith({
+      code: 400500,
+      message: 'System has conflicting actions',
     });
   });
 

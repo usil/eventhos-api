@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import ReceivedEvent from '../../../src/server/dtos/RecivedEvent.dto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 jest.mock('axios', () => jest.fn());
 jest.mock('knex', () => {
@@ -41,7 +42,11 @@ jest.mock('knex', () => {
       ])
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce({ sqlState: 1 }),
-    andWhere: jest(),
+    andWhere: jest
+      .fn()
+      .mockResolvedValueOnce([
+        { action: '', event: '', contract: '', action_security: '' },
+      ]),
     options: jest.fn().mockReturnThis(),
   };
   return jest.fn(() => mKnex);
@@ -429,11 +434,28 @@ describe('Event routes work accordingly', () => {
       });
     });
     it('No contracts for an event', async () => {
-      const mockedNext = jest.fn();
+      const mockedKnex = {
+        from: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        join: jest.fn().mockReturnThis(),
+        options: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockResolvedValue([]),
+        table: jest.fn().mockReturnThis(),
+        insert: jest.fn().mockResolvedValue([1]),
+      } as any as Knex;
+
+      const mockNext = jest.fn();
 
       const mockReq = () => {
         const req: Request = {} as Request;
         req.query = {};
+        req.headers = {};
+        req.body = {};
+        req.method = 'get';
+        req.protocol = 'https';
+        req.get = jest.fn().mockReturnValue('host');
+        req.originalUrl = 'original.www';
         return req;
       };
 
@@ -441,18 +463,49 @@ describe('Event routes work accordingly', () => {
 
       mockResponse.locals.eventId = 1;
 
-      await eventControllers.getEventContracts(
+      const eventControllersInternal = new EventControllers(mockedKnex);
+
+      await eventControllersInternal.getEventContracts(
         mockReq(),
         mockResponse,
-        mockedNext,
+        mockNext,
       );
+      expect(mockedKnex.from).toHaveBeenCalledWith('contract');
+      expect(mockedKnex.table).toHaveBeenCalledWith('received_event');
+      expect(mockedKnex.select).toHaveBeenCalled();
+      expect(mockedKnex.join).toHaveBeenCalledWith(
+        'event',
+        'contract.event_id',
+        'event.id',
+      );
+      expect(mockedKnex.join).toHaveBeenCalledWith(
+        'action_security',
+        'action.id',
+        'action_security.action_id',
+      );
+      expect(mockedKnex.where).toHaveBeenCalledTimes(2);
+      expect(mockedKnex.insert).toHaveBeenCalledTimes(1);
+
       expect(mockResponse.status).toHaveBeenCalledWith(203);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        code: 20031,
-        message: 'success, but no contracts exists for this event',
+        code: 200310,
+        message: 'Success, but no contracts exists for this event',
       });
     });
     it('Next is called', async () => {
+      const mockedKnex = {
+        from: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        join: jest.fn().mockReturnThis(),
+        options: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest
+          .fn()
+          .mockResolvedValue([
+            { action: '', event: '', contract: '', action_security: '' },
+          ]),
+        table: jest.fn().mockReturnThis(),
+      } as any as Knex;
       const mockedNext = jest.fn();
 
       const mockReq = () => {
@@ -465,7 +518,9 @@ describe('Event routes work accordingly', () => {
 
       mockResponse.locals.eventId = 1;
 
-      await eventControllers.getEventContracts(
+      const eventControllersInternal = new EventControllers(mockedKnex);
+
+      await eventControllersInternal.getEventContracts(
         mockReq(),
         mockResponse,
         mockedNext,
@@ -500,32 +555,6 @@ describe('Event routes work accordingly', () => {
       });
       expect(mockResponse.status).toHaveBeenCalledWith(500);
     });
-    it('500 error sql', async () => {
-      const mockedNext = jest.fn();
-
-      const mockReq = () => {
-        const req: Request = {} as Request;
-        req.query = {};
-        return req;
-      };
-
-      const mockResponse = mockRes();
-
-      mockResponse.locals.eventId = 1;
-
-      await eventControllers.getEventContracts(
-        mockReq(),
-        mockResponse,
-        mockedNext,
-      );
-
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
-
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        code: 500001,
-        message: `Data base error, with code 1`,
-      });
-    });
   });
 
   describe('Received events listing', () => {
@@ -535,13 +564,19 @@ describe('Event routes work accordingly', () => {
           id: 1,
           producer_event_id: 1,
           header: { someHeader: 'some' },
-          recived_at: new Date(),
+          received_at: new Date(),
         },
       ];
 
       const mockReq = () => {
         const req: Request = {} as Request;
         req.query = { itemsPerPage: '10', pageIndex: '1', order: 'desc' };
+        req.headers = {};
+        req.body = {};
+        req.method = 'get';
+        req.protocol = 'https';
+        req.get = jest.fn().mockReturnValue('host');
+        req.originalUrl = 'original.www';
         return req;
       };
 
@@ -555,6 +590,7 @@ describe('Event routes work accordingly', () => {
         knex.select = jest.fn().mockReturnValue(knex);
         knex.where = jest.fn().mockReturnValue(knex);
         knex.table = jest.fn().mockReturnValue(knex);
+        knex.leftJoin = jest.fn().mockReturnValue(knex);
         knex.count = jest.fn().mockResolvedValue([{ 'count(*)': 1 }]);
         knex.join = jest.fn().mockImplementation((some) => {
           knex.join = jest.fn().mockReturnValueOnce(receivedEvents);
@@ -586,7 +622,7 @@ describe('Event routes work accordingly', () => {
           id: 1,
           producer_event_id: 1,
           header: { someHeader: 'some' },
-          recived_at: new Date(),
+          received_at: new Date(),
         },
       ];
 
@@ -633,9 +669,7 @@ describe('Event routes work accordingly', () => {
                 system_id: 1,
                 identifier: 'identifier',
                 name: 'name',
-                http_configuration: {
-                  auth: 'x',
-                },
+                http_configuration: `x|.|x`,
                 operation: 'select',
                 description: 'description',
                 deleted: 1,
@@ -684,6 +718,11 @@ describe('Event routes work accordingly', () => {
       const req = {
         body: { bod: 'x' },
         headers: { auth: 'x' },
+        query: {},
+        method: 'get',
+        protocol: 'https',
+        get: jest.fn().mockReturnValue('host'),
+        originalUrl: 'original.www',
       } as any as Request;
 
       const knexMock = {
@@ -691,6 +730,12 @@ describe('Event routes work accordingly', () => {
         insert: jest.fn().mockResolvedValue([1]),
       };
       const eventControllers = new EventControllers(knexMock as any);
+      eventControllers.getVariables = jest.fn().mockReturnValue('goodDATA');
+      eventControllers.decryptString = jest
+        .fn()
+        .mockReturnValue(
+          '{"headers": {"X": 1}, "params": {"X": 1}, "data": {"X": 1}}',
+        );
       await eventControllers.manageEvent(req, res);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
@@ -911,5 +956,78 @@ describe('Event routes work accordingly', () => {
       await eventControllers.manageEvent(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
     });
+  });
+
+  it('Handles decoded data', () => {
+    const decode = {
+      data: {
+        id: 1,
+      },
+    };
+    const client = {
+      client_id: 1,
+    };
+    const res = {
+      locals: {
+        eventId: 0,
+      },
+    } as any;
+    const nextFunction = jest.fn();
+    const event = {
+      client_id: 1,
+      identifier: 'event',
+      id: 1,
+    };
+    const eventControllers = new EventControllers({} as Knex);
+    eventControllers.handleDecodeData(decode, client, res, nextFunction, event);
+    expect(nextFunction).toHaveBeenCalled();
+  });
+
+  it('Handles decoded data, incorrect token', () => {
+    const decode = {
+      data: {
+        id: 4,
+      },
+    };
+    const client = {
+      client_id: 1,
+    };
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+      locals: {
+        eventId: 0,
+      },
+    } as any;
+    const nextFunction = jest.fn();
+    const event = {
+      client_id: 2,
+      identifier: 'event',
+      id: 3,
+    };
+    const eventControllers = new EventControllers({} as Knex);
+    eventControllers.handleDecodeData(decode, client, res, nextFunction, event);
+    expect(nextFunction).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
+
+  it('Gets contract execution detail', async () => {
+    const req = {
+      params: {
+        id: 1,
+      },
+    } as any as Request;
+    const knexMock = {
+      table: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      join: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnValue([{ request: '{}', response: '{}' }]),
+    } as any as Knex;
+    const eventControllers = new EventControllers(knexMock);
+    eventControllers.decryptString = jest.fn().mockReturnValue('{}');
+    const res = mockRes();
+    await eventControllers.getContractExecutionDetail(req, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalled();
   });
 });

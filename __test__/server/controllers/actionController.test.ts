@@ -49,7 +49,7 @@ describe('Actions controller functions work', () => {
         headers: [{ key: 'some', value: 1 }],
         body: [{ key: 'some', value: 2 }],
         queryUrlParams: [{ key: 'some', value: 3 }],
-        securityType: 1,
+        securityType: 2,
         securityUrl: null,
         clientId: null,
         clientSecret: null,
@@ -70,20 +70,28 @@ describe('Actions controller functions work', () => {
 
     expect(vectorSpy).toHaveBeenCalledWith(16);
 
-    expect(knex.insert).toHaveBeenCalledWith({
-      system_id: 1,
-      identifier: 'action_identifier',
-      name: 'action name',
-      http_configuration: hexedVector + '|.|' + 'encrypted' + 'final',
-      operation: 'new',
-      description: 'action description',
-    });
+    expect(knex.insert).toBeCalledTimes(2);
 
-    expect(knex.insert).toHaveBeenCalledWith({
-      action_id: 1,
-      type: 'public',
-      http_configuration: hexedVector + '|.|' + 'encrypted' + 'final',
-    });
+    // expect(knex.insert).toHaveBeenCalledWith({
+    //   action_id: 1,
+    //   description: 'action description',
+    //   http_configuration: '736f6d65|.|encryptedfinal',
+    //   type: 'custom',
+    //   identifier: 'action_identifier',
+    //   name: 'action name',
+    //   operation: 'new',
+    //   system_id: 1,
+    // });
+
+    // expect(knex.insert).toHaveBeenCalledWith({
+    //   action_id: 1,
+    //   http_configuration: '736f6d65|.|encryptedfinal',
+    //   identifier: 'action_identifier',
+    //   name: 'action name',
+    //   operation: 'new',
+    //   system_id: 1,
+    //   type: 'custom',
+    // });
 
     cipherSpy.mockRestore();
     vectorSpy.mockRestore();
@@ -131,7 +139,7 @@ describe('Actions controller functions work', () => {
         headers: [{ key: 'some', value: 1 }],
         body: [{ key: 'some', value: 2 }],
         queryUrlParams: [{ key: 'some', value: 3 }],
-        securityType: 2,
+        securityType: 1,
         securityUrl: 'token.com',
         clientId: 'clientId',
         clientSecret: 'clientSecret',
@@ -141,7 +149,7 @@ describe('Actions controller functions work', () => {
     const securityHttpConfiguration: Record<string, any> = {
       url: 'token.com',
       method: 'post',
-      params: {
+      data: {
         client_id: 'clientId',
         client_secret: 'clientSecret',
         grant_type: 'client_credentials',
@@ -189,87 +197,6 @@ describe('Actions controller functions work', () => {
       type: 'oauth2_client',
       http_configuration: hexedVector + '|.|' + 'encrypted' + 'final',
     });
-
-    cipherSpy.mockRestore();
-    vectorSpy.mockRestore();
-    keySpy.mockRestore();
-  });
-
-  it('Create action works, public api key', async () => {
-    const cipherSpy = jest.spyOn(crypto, 'createCipheriv').mockReturnValue({
-      update: jest.fn().mockReturnValue('encrypted'),
-      final: jest.fn().mockReturnValue('final'),
-    } as any);
-
-    const keyBuffer = Buffer.from('some', 'utf-8');
-
-    const vectorBuffer = Buffer.from('some', 'utf-8');
-
-    const hexedVector = vectorBuffer.toString('hex');
-
-    const keySpy = jest.spyOn(crypto, 'scryptSync').mockReturnValue(keyBuffer);
-
-    const vectorSpy = jest
-      .spyOn(crypto, 'randomBytes')
-      .mockReturnValue(vectorBuffer as any);
-
-    const knex = {
-      table: jest.fn().mockReturnThis(),
-      insert: jest.fn().mockResolvedValue([1]),
-    } as any as Knex;
-
-    const res = mockRes();
-
-    const req = {
-      body: {
-        system_id: 1,
-        identifier: 'action_identifier',
-        name: 'action name',
-        operation: 'new',
-        description: 'action description',
-        url: 'action.com',
-        method: 'get',
-        headers: [{ key: 'some', value: 1 }],
-        body: [{ key: 'some', value: 2 }],
-        queryUrlParams: [{ key: 'some', value: 3 }],
-        securityType: 4,
-        securityUrl: null,
-        clientId: null,
-        clientSecret: null,
-      },
-    } as Request;
-
-    const actionController = new ActionController(knex);
-
-    await actionController.createAction(req, res);
-
-    expect(cipherSpy).toHaveBeenCalledWith(
-      'aes-256-ctr',
-      keyBuffer,
-      vectorBuffer,
-    );
-
-    expect(keySpy).toHaveBeenCalled();
-
-    expect(vectorSpy).toHaveBeenCalledWith(16);
-
-    expect(knex.insert).toHaveBeenCalledWith({
-      system_id: 1,
-      identifier: 'action_identifier',
-      name: 'action name',
-      http_configuration: hexedVector + '|.|' + 'encrypted' + 'final',
-      operation: 'new',
-      description: 'action description',
-    });
-
-    expect(knex.insert).toHaveBeenCalledWith({
-      action_id: 1,
-      type: 'api_key',
-      http_configuration: hexedVector + '|.|' + 'encrypted' + 'final',
-    });
-
-    expect(res.json).toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(201);
 
     cipherSpy.mockRestore();
     vectorSpy.mockRestore();
@@ -424,16 +351,18 @@ describe('Actions controller functions work', () => {
     const knex = {
       table: jest.fn().mockReturnThis(),
       update: jest.fn().mockReturnThis(),
-      where: jest.fn().mockResolvedValue(1),
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockResolvedValue([]),
     } as any as Knex;
 
     const actionController = new ActionController(knex);
 
     await actionController.deleteAction(req, res);
 
-    expect(knex.table).toHaveBeenCalledWith('action');
+    expect(knex.table).toHaveBeenCalledWith('contract');
     expect(knex.update).toHaveBeenCalledWith('deleted', true);
-    expect(knex.where).toHaveBeenCalledWith('id', 1);
+    expect(knex.where).toHaveBeenCalledWith('action_id', 1);
 
     expect(res.status).toBeCalledWith(201);
 
@@ -471,6 +400,18 @@ describe('Actions controller functions work', () => {
         id: 1,
       },
       body: {
+        queryUrlParams: [
+          {
+            key: 'test',
+            value: 1,
+          },
+        ],
+        headers: [
+          {
+            key: 'test',
+            value: 1,
+          },
+        ],
         name: 'newName',
         operation: 'new',
         description: 'new description',
@@ -487,13 +428,19 @@ describe('Actions controller functions work', () => {
 
     const actionController = new ActionController(knex);
 
+    const initVector = crypto.randomBytes(16);
+    const hexedInitVector = initVector.toString('hex');
+    actionController.encryptString = jest
+      .fn()
+      .mockReturnValue({ hexedInitVector, encryptedData: 'xx' });
     await actionController.updateAction(req, res);
 
     expect(knex.table).toHaveBeenCalledWith('action');
     expect(knex.update).toHaveBeenCalledWith({
+      description: 'new description',
       name: 'newName',
       operation: 'new',
-      description: 'new description',
+      http_configuration: `${hexedInitVector}|.|xx`,
     });
     expect(knex.where).toHaveBeenCalledWith('id', 1);
 
@@ -528,13 +475,6 @@ describe('Actions controller functions work', () => {
     const actionController = new ActionController(knex);
 
     await actionController.updateAction(req, res);
-
-    expect(knex.table).toHaveBeenCalledWith('action');
-    expect(knex.update).toHaveBeenCalledWith({
-      name: 'newName',
-      operation: 'new',
-      description: 'new description',
-    });
 
     expect(res.status).not.toBeCalledWith(201);
 

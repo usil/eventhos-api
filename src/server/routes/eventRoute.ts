@@ -29,6 +29,18 @@ export const createRouteEvent = (knexPool: Knex, oauthBoot: any): Route => {
 
   authRouter.obGet('/received', 'event:select', controllers.listReceivedEvents);
 
+  authRouter.obGet(
+    '/received/:id',
+    'event:select',
+    controllers.getReceivedEventDetails,
+  );
+
+  authRouter.obGet(
+    '/received/execution-detail/:id',
+    'event:select',
+    controllers.getContractExecutionDetail,
+  );
+
   authRouter.obGet('/', 'event:select', controllers.getEvents);
 
   authRouter.obPut('/:id', 'event:update', controllers.updateEvent);

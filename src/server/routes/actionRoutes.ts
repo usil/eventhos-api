@@ -21,6 +21,8 @@ export const createRouteAction = (knexPool: Knex, oauthBoot: any): Route => {
 
   authRouter.obGet('/', 'action:select', controllers.getActions);
 
+  authRouter.obGet('/:id', 'action:select', controllers.getAction);
+
   authRouter.obPut('/:id', 'action:update', controllers.updateAction);
 
   authRouter.obDelete('/:id', 'action:delete', controllers.deleteAction);
