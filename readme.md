@@ -1,4 +1,4 @@
-# Eventhos 0.0.1
+# Eventhos 0.0.2
 
 <img src="./badges/badge-branches.svg">
 <img src="./badges/badge-functions.svg">

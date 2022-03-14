@@ -2,14 +2,14 @@ import { basicContent } from '../listRecivedEvents.mocked';
 import EventControllers from '../../../src/server/controllers/event.controller';
 import { Request, Response } from 'express';
 import knex, { Knex } from 'knex';
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { firstValueFrom } from 'rxjs';
 import ReceivedEvent from '../../../src/server/dtos/RecivedEvent.dto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 
-jest.mock('axios', () => jest.fn());
+jest.mock('axios', () => jest.fn().mockReturnValue({ data: 1, headers: 1 }));
 jest.mock('knex', () => {
   const mKnex = {
     select: jest.fn().mockReturnThis(),
@@ -616,6 +616,61 @@ describe('Event routes work accordingly', () => {
       });
     });
 
+    it('List received events with filters', async () => {
+      const receivedEvents: ReceivedEvent[] = [
+        {
+          id: 1,
+          producer_event_id: 1,
+          header: { someHeader: 'some' },
+          received_at: new Date(),
+        },
+      ];
+
+      const mockReq = () => {
+        const req: Request = {} as Request;
+        req.query = {
+          itemsPerPage: '10',
+          pageIndex: '1',
+          order: 'desc',
+          systemId: '1',
+          toTime: 'December 17, 1995 03:24:00',
+          fromTime: 'December 17, 1995 03:24:00',
+        };
+        req.headers = {};
+        req.body = {};
+        req.method = 'get';
+        req.protocol = 'https';
+        req.get = jest.fn().mockReturnValue('host');
+        req.originalUrl = 'original.www';
+        return req;
+      };
+
+      const mockResponse = mockRes();
+
+      const whereMock = jest.fn();
+
+      const knexMock = jest.fn().mockImplementation((objectOrString) => {
+        const knex: Record<string, any> = {};
+        knex.limit = jest.fn().mockReturnValue(knex);
+        knex.offset = jest.fn().mockReturnValue(knex);
+        knex.orderBy = jest.fn().mockReturnValue(knex);
+        knex.select = jest.fn().mockReturnValue(knex);
+        knex.where = whereMock;
+        knex.table = jest.fn().mockReturnValue(knex);
+        knex.leftJoin = jest.fn().mockReturnValue(knex);
+        knex.count = jest.fn().mockReturnValue(knex);
+        knex.join = jest.fn().mockImplementation((some) => {
+          knex.join = jest.fn().mockReturnValueOnce(receivedEvents);
+          return knex;
+        });
+        return knex;
+      });
+
+      const eventControllers = new EventControllers(knexMock as any);
+      await eventControllers.listReceivedEvents(mockReq(), mockResponse);
+      expect(whereMock).toHaveBeenCalledTimes(3);
+    });
+
     it('List received events fails', async () => {
       const receivedEvents: ReceivedEvent[] = [
         {
@@ -744,12 +799,98 @@ describe('Event routes work accordingly', () => {
       });
     });
 
-    it('Manage event correct not correct locals', async () => {
+    it('Manage event correct oauth2 security and no data', async () => {
       const mockRes = () => {
         const res = {} as Response;
         res.locals = {
           eventId: 1,
+          eventContracts: [
+            {
+              action: {
+                id: 1,
+                system_id: 1,
+                identifier: 'identifier',
+                name: 'name',
+                http_configuration: `x|.|x`,
+                operation: 'select',
+                description: 'description',
+                deleted: 1,
+                created_at: new Date(),
+                updated_at: new Date(),
+              },
+              event: {
+                id: 1,
+                system_id: 1,
+                identifier: 'identifier',
+                name: 'name',
+                operation: 'select',
+                description: 'description',
+                deleted: 0,
+                created_at: new Date(),
+                updated_at: new Date(),
+              },
+              contract: {
+                id: 1,
+                action_id: 1,
+                event_id: 1,
+                identifier: 'ident',
+                name: 'name',
+                active: 1,
+                deleted: 0,
+                created_at: new Date(),
+                updated_at: new Date(),
+              },
+              action_security: {
+                id: 1,
+                action_id: 1,
+                type: 'oauth2_client',
+                http_configuration: { url: 'http' },
+                json_path_exp: 'exp',
+                updated_at: new Date(),
+              },
+            },
+          ],
         };
+        res.json = jest.fn();
+        res.status = jest.fn().mockReturnThis();
+        return res;
+      };
+      const res = mockRes();
+
+      const req = {
+        body: { bod: 'x' },
+        headers: { auth: 'x' },
+        query: {},
+        method: 'get',
+        protocol: 'https',
+        get: jest.fn().mockReturnValue('host'),
+        originalUrl: 'original.www',
+      } as any as Request;
+
+      const knexMock = {
+        table: jest.fn().mockReturnThis(),
+        insert: jest.fn().mockResolvedValue([1]),
+      };
+      const eventControllers = new EventControllers(knexMock as any);
+      eventControllers.getVariables = jest.fn().mockReturnValue('goodDATA');
+      eventControllers.decryptString = jest
+        .fn()
+        .mockReturnValue(
+          '{"headers": {"X": 1}, "params": {"X": 1}, "data": {}}',
+        );
+      await eventControllers.manageEvent(req, res);
+      expect(eventControllers.decryptString).toHaveBeenCalledTimes(2);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        code: 20000,
+        message: 'success',
+      });
+    });
+
+    it('Manage event correct not correct locals', async () => {
+      const mockRes = () => {
+        const res = {} as Response;
+        res.locals = {};
         res.json = jest.fn();
         res.status = jest.fn().mockReturnThis();
         return res;
@@ -1029,5 +1170,548 @@ describe('Event routes work accordingly', () => {
     await eventControllers.getContractExecutionDetail(req, res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalled();
+  });
+
+  it('Gets contract execution detail fails', async () => {
+    const req = {
+      params: {
+        id: 1,
+      },
+    } as any as Request;
+    const knexMock = {
+      table: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      join: jest.fn().mockReturnThis(),
+      where: jest.fn().mockRejectedValue(new Error('Async error')),
+    } as any as Knex;
+    const eventControllers = new EventControllers(knexMock);
+    eventControllers.decryptString = jest.fn().mockReturnValue('{}');
+    const res = mockRes();
+    await eventControllers.getContractExecutionDetail(req, res);
+    expect(res.status).not.toHaveBeenCalledWith(200);
+  });
+
+  it('Gets Events', async () => {
+    const req = {
+      query: {
+        itemsPerPage: 10,
+        offset: 10,
+        pageIndex: 0,
+        order: 'desc',
+        activeSort: 'id',
+      },
+    } as any as Request;
+    const res = mockRes();
+    const knex = {
+      table: jest.fn().mockReturnThis(),
+      where: jest
+        .fn()
+        .mockResolvedValue([{ id: 1 }])
+        .mockResolvedValueOnce([{ 'count(*)': 1 }]),
+      count: jest.fn().mockReturnThis(),
+      offset: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+    } as any as Knex;
+
+    const eventControllers = new EventControllers(knex);
+    await eventControllers.getEvents(req, res);
+
+    expect(knex.table).toHaveBeenCalledWith('event');
+    expect(knex.offset).toHaveBeenCalledWith(0);
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('Gets Events fails', async () => {
+    const req = {
+      query: {
+        itemsPerPage: 10,
+        offset: 10,
+        pageIndex: 0,
+        order: 'desc',
+        activeSort: 'id',
+      },
+    } as any as Request;
+    const res = mockRes();
+    const knex = {
+      table: jest.fn().mockReturnThis(),
+      where: jest.fn().mockRejectedValueOnce(new Error('Some error')),
+      count: jest.fn().mockReturnThis(),
+      offset: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+    } as any as Knex;
+
+    const eventControllers = new EventControllers(knex);
+    await eventControllers.getEvents(req, res);
+
+    expect(res.status).not.toHaveBeenCalledWith(200);
+  });
+
+  it('Delete event works', async () => {
+    const req = {
+      params: {
+        id: 1,
+      },
+    } as any as Request;
+
+    const knexMock = {
+      table: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([1]),
+    } as any as Knex;
+
+    const res = mockRes();
+
+    const eventControllers = new EventControllers(knexMock);
+    await eventControllers.deleteEvent(req, res);
+
+    expect(knexMock.table).toBeCalledWith('contract');
+    expect(knexMock.table).toBeCalledWith('event');
+
+    expect(knexMock.update).toBeCalledWith('deleted', true);
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({
+      code: 200001,
+      message: 'success',
+    });
+  });
+
+  it('Delete event works, conflict', async () => {
+    const req = {
+      params: {
+        id: 1,
+      },
+    } as any as Request;
+
+    const knexMock = {
+      table: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockResolvedValueOnce([1]),
+    } as any as Knex;
+
+    const res = mockRes();
+
+    const eventControllers = new EventControllers(knexMock);
+    await eventControllers.deleteEvent(req, res);
+
+    expect(knexMock.table).toBeCalledWith('contract');
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      code: 400500,
+      message: 'Event has active contracts',
+    });
+  });
+
+  it('Delete event fails', async () => {
+    const req = {
+      params: {
+        id: 1,
+      },
+    } as any as Request;
+
+    const knexMock = {
+      table: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockRejectedValue(new Error('Async Error')),
+    } as any as Knex;
+
+    const res = mockRes();
+
+    const eventControllers = new EventControllers(knexMock);
+    await eventControllers.deleteEvent(req, res);
+
+    expect(res.status).not.toHaveBeenCalledWith(201);
+  });
+
+  it('Update event works', async () => {
+    const req = {
+      params: {
+        id: 1,
+      },
+      body: {
+        name: 'new name',
+        operation: 'new',
+        description: 'Updated description',
+      },
+    } as any as Request;
+    const knexMock = {
+      table: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      where: jest.fn().mockResolvedValue([1]),
+    } as any as Knex;
+    const res = mockRes();
+
+    const eventControllers = new EventControllers(knexMock);
+    await eventControllers.updateEvent(req, res);
+
+    expect(knexMock.table).toHaveBeenCalledWith('event');
+    expect(knexMock.update).toHaveBeenCalledWith({
+      name: 'new name',
+      operation: 'new',
+      description: 'Updated description',
+    });
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({
+      code: 200001,
+      message: 'success',
+    });
+  });
+
+  it('Update event fails', async () => {
+    const req = {
+      params: {
+        id: 1,
+      },
+      body: {
+        name: 'new name',
+        operation: 'new',
+        description: 'Updated description',
+      },
+    } as any as Request;
+    const knexMock = {
+      table: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      where: jest.fn().mockRejectedValue(new Error('Async error')),
+    } as any as Knex;
+    const res = mockRes();
+
+    const eventControllers = new EventControllers(knexMock);
+    await eventControllers.updateEvent(req, res);
+
+    expect(res.status).not.toHaveBeenLastCalledWith(201);
+  });
+
+  it('Create event works', async () => {
+    const req = {
+      params: {
+        id: 1,
+      },
+      body: {
+        system_id: 1,
+        identifier: 'Identifier',
+        name: 'new name',
+        operation: 'new',
+        description: 'Updated description',
+      },
+    } as any as Request;
+
+    const knexMock = {
+      table: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockResolvedValue([1]),
+    } as any as Knex;
+    const res = mockRes();
+
+    const eventControllers = new EventControllers(knexMock);
+    await eventControllers.createEvent(req, res);
+
+    expect(knexMock.table).toHaveBeenCalledWith('event');
+    expect(knexMock.insert).toHaveBeenCalledWith({
+      system_id: 1,
+      identifier: 'Identifier',
+      name: 'new name',
+      operation: 'new',
+      description: 'Updated description',
+    });
+
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  it('Create event fails', async () => {
+    const req = {
+      params: {
+        id: 1,
+      },
+      body: {
+        system_id: 1,
+        identifier: 'Identifier',
+        name: 'new name',
+        operation: 'new',
+        description: 'Updated description',
+      },
+    } as any as Request;
+
+    const knexMock = {
+      table: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockRejectedValue(new Error('Async error')),
+    } as any as Knex;
+    const res = mockRes();
+
+    const eventControllers = new EventControllers(knexMock);
+    await eventControllers.createEvent(req, res);
+
+    expect(res.status).not.toHaveBeenCalledWith(201);
+  });
+
+  it('Join Search works', () => {
+    const baseSearchResult = [
+      { id: 1, randomField: 'x', similarField: 'y' },
+      { id: 1, randomField: 'x2', similarField: 'y2' },
+      { id: 1, randomField: 'x3', similarField: 'y3' },
+      { id: 1, randomField: 'x4', similarField: 'y4' },
+      { id: 2, randomField: 'p', similarField: 'z' },
+      { id: 2, randomField: 'p1', similarField: 'z1' },
+    ];
+    const eventControllers = new EventControllers({} as any);
+    const joinResult = eventControllers.joinSearch(
+      baseSearchResult,
+      'id',
+      'similarField',
+    );
+
+    expect(joinResult[2]).toBe(undefined);
+    expect(joinResult.length).toBe(2);
+    expect(joinResult[0].similarField.length).toBe(4);
+  });
+
+  it('Get received event details works', async () => {
+    const req = {
+      params: {
+        id: 1,
+      },
+      body: {
+        system_id: 1,
+        identifier: 'Identifier',
+        name: 'new name',
+        operation: 'new',
+        description: 'Updated description',
+      },
+    } as any as Request;
+    const res = mockRes();
+    const knexMock = {
+      table: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      join: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockResolvedValue([{ received_request: 'x' }]),
+    } as any as Knex;
+
+    const eventControllers = new EventControllers(knexMock);
+    eventControllers.decryptString = jest.fn().mockReturnValue('{"x": 1}');
+    await eventControllers.getReceivedEventDetails(req, res);
+
+    expect(knexMock.table).toHaveBeenCalledWith('contract_exc_detail');
+    expect(knexMock.table).toHaveBeenCalledWith('received_event');
+
+    expect(knexMock.select).toHaveBeenCalledWith(
+      'received_event.id',
+      'received_event.received_at',
+      'received_event.received_request',
+      'event.id as eventId',
+      'event.identifier as eventIdentifier',
+      'event.name as eventName',
+      'event.operation as eventOperation',
+      'event.description as eventDescription',
+    );
+    expect(knexMock.select).toHaveBeenCalledWith(
+      'contract_exc_detail.id as detailId',
+      'contract_exc_detail.state',
+      'contract.id as contractId',
+      'contract.identifier as contractIdentifier',
+      'contract.name as contractName',
+      'action.id as actionId',
+      'action.identifier as actionIdentifier',
+      'action.name as actionName',
+      'action.operation as actionOperation',
+      'action.description as actionDescription',
+    );
+
+    expect(knexMock.join).toHaveBeenCalledWith(
+      'event',
+      'received_event.event_id',
+      'event.id',
+    );
+
+    expect(knexMock.join).toHaveBeenCalledWith(
+      'action',
+      'contract.action_id',
+      'action.id',
+    );
+
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('Get received event details fails', async () => {
+    const req = {
+      params: {
+        id: 1,
+      },
+      body: {
+        system_id: 1,
+        identifier: 'Identifier',
+        name: 'new name',
+        operation: 'new',
+        description: 'Updated description',
+      },
+    } as any as Request;
+    const res = mockRes();
+    const knexMock = {
+      table: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      join: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockRejectedValue(new Error('Async error')),
+    } as any as Knex;
+
+    const eventControllers = new EventControllers(knexMock);
+    eventControllers.decryptString = jest.fn().mockReturnValue('{"x": 1}');
+    await eventControllers.getReceivedEventDetails(req, res);
+
+    expect(res.status).not.toHaveBeenCalledWith(200);
+  });
+
+  it('Decrypt string', () => {
+    const spyCryptoSpy = jest
+      .spyOn(crypto, 'scryptSync')
+      .mockReturnValue('key' as any);
+    const spyCryptoSpyDecipher = jest
+      .spyOn(crypto, 'createDecipheriv')
+      .mockReturnValue({
+        update: jest.fn().mockReturnValue('x'),
+        final: jest.fn().mockReturnValue('x'),
+      } as any);
+    const eventController = new EventControllers({} as Knex);
+    eventController.decryptString('x|.|x');
+    expect(spyCryptoSpy).toHaveBeenCalled();
+    spyCryptoSpy.mockRestore();
+    spyCryptoSpyDecipher.mockRestore();
+  });
+
+  it('Encrypt string', () => {
+    const spyCryptoSpy = jest
+      .spyOn(crypto, 'scryptSync')
+      .mockReturnValue('key' as any);
+    const spyCryptoSpyDecipher = jest
+      .spyOn(crypto, 'createCipheriv')
+      .mockReturnValue({
+        update: jest.fn().mockReturnValue('x'),
+        final: jest.fn().mockReturnValue('x'),
+      } as any);
+    const eventController = new EventControllers({} as Knex);
+    eventController.encryptString('x|.|x');
+    expect(spyCryptoSpy).toHaveBeenCalled();
+    spyCryptoSpy.mockRestore();
+    spyCryptoSpyDecipher.mockRestore();
+  });
+
+  it('Handle axios next', async () => {
+    const res = {
+      headers: {
+        test: 1,
+      },
+      data: {
+        test: 1,
+      },
+      status: 200,
+      statusText: 'ok',
+      config: {
+        data: {
+          test: 1,
+        },
+        url: '/url',
+        params: {
+          test: 1,
+        },
+        method: 'get',
+        headers: {
+          eventhosStartDate: 'now',
+        },
+      },
+    } as any as AxiosResponse<any, any>;
+    const contract = {
+      contract: {
+        id: 1,
+      },
+    } as any;
+    const knexMock = {
+      table: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockResolvedValue([1]),
+    } as any as Knex;
+    const eventController = new EventControllers(knexMock);
+    await eventController.handleNextAxiosSubscription(res, contract, [1]);
+    expect(knexMock.table).toHaveBeenCalledWith('contract_exc_detail');
+    expect(knexMock.insert).toHaveBeenCalledTimes(2);
+  });
+
+  it('Parse body works', () => {
+    const dataMock = {
+      testString: 'someString',
+      testObj: {
+        test: 1,
+      },
+    };
+    const eventController = new EventControllers({} as any);
+    eventController.getVariables = jest.fn().mockReturnValue('test');
+    const result = eventController.parseBodyData(dataMock, {} as any);
+    expect(eventController.getVariables).toBeCalledTimes(1);
+    expect(result.testString).toBe('test');
+  });
+
+  it('IsJsonString function works', () => {
+    const eventController = new EventControllers({} as any);
+    const isJsonFirst = eventController.IsJsonString('2');
+    const isJsonSecond = eventController.IsJsonString('x:x');
+    expect(isJsonFirst).toBe(true);
+    expect(isJsonSecond).toBe(false);
+  });
+
+  it('Get variables works', () => {
+    const req = {
+      headers: {
+        test: '1',
+      },
+      query: {
+        test: '1',
+      },
+      body: {
+        test: 1,
+        testData: 1,
+        'test-two': {
+          test: 1,
+        },
+      },
+    };
+    const eventController = new EventControllers({} as any);
+    const variableOne = eventController.getVariables(
+      'notVariable',
+      0,
+      req,
+      'params',
+    );
+    const variableTwo = eventController.getVariables(
+      '${.headers.test}',
+      0,
+      req,
+      'params',
+    );
+
+    const variableThree = eventController.getVariables(
+      '${.body.test-two}',
+      0,
+      req,
+      'params',
+    );
+
+    const variableFour = eventController.getVariables(
+      '${.body.testData}',
+      0,
+      req,
+      'data',
+    );
+    expect(variableOne).toBe('notVariable');
+    expect(variableTwo).toBe('1');
+    expect(variableFour).toBe(1);
+    expect(JSON.parse(variableThree)).toStrictEqual({
+      test: 1,
+    });
   });
 });

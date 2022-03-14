@@ -203,8 +203,6 @@ class ActionControllers {
         });
       }
 
-      const algorithm = 'aes-256-ctr';
-
       let jsonAxiosBaseAuthConfig: AxiosRequestConfig = {};
 
       if (action.securityType === 'oauth2_client') {

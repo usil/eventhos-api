@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { Knex } from 'knex';
-import axios, { AxiosRequestConfig } from 'axios';
+import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { defer, take } from 'rxjs';
 import {
   Action,
@@ -103,15 +103,6 @@ class EventControllers {
           });
         }
         this.handleDecodeData(decode, client, res, next, event);
-        // const subject = decode.data;
-        // if (subject.id == client.client_id) {
-        //   res.locals.eventId = event.id;
-        //   return next();
-        // }
-        // return res.status(401).json({
-        //   code: 400001,
-        //   message: 'Incorrect token',
-        // });
       });
     } catch (error) {
       this.returnError(error, res);
@@ -346,32 +337,11 @@ class EventControllers {
           parsedQueryParams[paramKey] = parsedParam;
         }
 
-        for (const dataKey in jsonAxiosBaseConfig.data) {
-          const data = jsonAxiosBaseConfig.data[dataKey];
-          if (typeof data === 'string' || data instanceof String) {
-            const parsedData = this.getVariables(
-              data as string,
-              0,
-              parsedReq,
-              'data',
-            );
-            parsedBody[dataKey] = parsedData;
-          } else if (
-            typeof data === 'object' &&
-            Array.isArray(data) === false &&
-            data !== null
-          ) {
-            data;
-          } else {
-            parsedBody[dataKey] = data;
-          }
-        }
-
         const fullParsedBody = {
           ...this.parseBodyData(jsonAxiosBaseConfig.data, parsedReq),
         };
 
-        if (jsonAxiosBaseConfig.data === {}) {
+        if (JSON.stringify(jsonAxiosBaseConfig.data) === '{}') {
           parsedBody = { ...req.body };
         } else {
           parsedBody = {
@@ -394,50 +364,7 @@ class EventControllers {
           .pipe(take(1))
           .subscribe({
             next: async (res) => {
-              try {
-                const excDetail = await this.knexPool
-                  .table('contract_exc_detail')
-                  .insert({
-                    contract_id: contract.contract.id,
-                    received_event_id: receivedEvent[0],
-                    state: 'processed',
-                  });
-                const successResponse = {
-                  headers: res.headers,
-                  body: res.data,
-                  status: res.status,
-                  statusText: res.statusText,
-                  endTime: new Date().toISOString(),
-                  startTime: res.config.headers.eventhosStartDate,
-                };
-                const successRequest = {
-                  headers: res.config.headers,
-                  body: res.config.data,
-                  url: res.config.url,
-                  params: res.config.params,
-                  method: res.config.method,
-                };
-                const encryptResultResponse = this.encryptString(
-                  JSON.stringify(successResponse),
-                );
-                const encryptResultRequest = this.encryptString(
-                  JSON.stringify(successRequest),
-                );
-                await this.knexPool.table('contract_exc_try').insert({
-                  contract_exc_detail_id: excDetail[0],
-                  state: 'processed',
-                  response:
-                    encryptResultResponse.hexedInitVector +
-                    '|.|' +
-                    encryptResultResponse.encryptedData,
-                  request:
-                    encryptResultRequest.hexedInitVector +
-                    '|.|' +
-                    encryptResultRequest.encryptedData,
-                });
-              } catch (error) {
-                console.log(error);
-              }
+              this.handleNextAxiosSubscription(res, contract, receivedEvent);
             },
             error: async (error) => {
               try {
@@ -491,6 +418,62 @@ class EventControllers {
       return res.status(200).json({ code: 20000, message: 'success' });
     } catch (error) {
       this.returnError(error, res);
+    }
+  };
+
+  handleNextAxiosSubscription = async (
+    res: AxiosResponse<any, any>,
+    contract: {
+      action: Action;
+      event: Event;
+      contract: Contract;
+      action_security: ActionSecurity;
+    },
+    receivedEvent: number[],
+  ) => {
+    try {
+      const excDetail = await this.knexPool
+        .table('contract_exc_detail')
+        .insert({
+          contract_id: contract.contract.id,
+          received_event_id: receivedEvent[0],
+          state: 'processed',
+        });
+      const successResponse = {
+        headers: res.headers,
+        body: res.data,
+        status: res.status,
+        statusText: res.statusText,
+        endTime: new Date().toISOString(),
+        startTime: res.config.headers.eventhosStartDate,
+      };
+      const successRequest = {
+        headers: res.config.headers,
+        body: res.config.data,
+        url: res.config.url,
+        params: res.config.params,
+        method: res.config.method,
+      };
+      const encryptResultResponse = this.encryptString(
+        JSON.stringify(successResponse),
+      );
+      const encryptResultRequest = this.encryptString(
+        JSON.stringify(successRequest),
+      );
+      await this.knexPool.table('contract_exc_try').insert({
+        contract_exc_detail_id: excDetail[0],
+        state: 'processed',
+        response:
+          encryptResultResponse.hexedInitVector +
+          '|.|' +
+          encryptResultResponse.encryptedData,
+        request:
+          encryptResultRequest.hexedInitVector +
+          '|.|' +
+          encryptResultRequest.encryptedData,
+      });
+    } catch (error) {
+      console.log(error);
     }
   };
 
@@ -891,7 +874,7 @@ class EventControllers {
       await this.knexPool
         .table('event')
         .update('deleted', true)
-        .where('id', id);
+        .andWhere('id', id);
 
       return res.status(201).json({
         code: 200001,
@@ -908,7 +891,7 @@ class EventControllers {
         controllerHelpers.getPaginationData(req);
 
       const totalEventsCount = (
-        await this.knexPool.table('event').where('deleted', false).count()
+        await this.knexPool.table('event').count().where('deleted', false)
       )[0]['count(*)'];
 
       const totalPages = Math.ceil(
