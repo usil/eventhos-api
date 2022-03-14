@@ -14,6 +14,7 @@ export class ConfigGlobalDto {
   dataBasePassword: string;
   cpuCount: number;
   jwtSecret: string;
+  cryptoKey: string;
 }
 
 export default new ConfigGlobalDto();

@@ -9,13 +9,13 @@ INSERT INTO `eventhos`.`system`
 (`identifier`,
 `name`,
 `type`,
-`key`,
+`clientId`,
 `description`)
 VALUES
 ('system_identifier',
 'System Name',
 'Microservice',
-'asecurekey',
+'clientId',
 'System description');
 ```
 
