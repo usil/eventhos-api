@@ -48,7 +48,10 @@ class ContractControllers {
       );
 
       const contractQuery = this.knexPool({
-        contract: this.knexPool('contract').limit(itemsPerPage).offset(offset),
+        contract: this.knexPool('contract')
+          .limit(itemsPerPage)
+          .offset(offset)
+          .orderBy('contract.id', order),
       } as any)
         .select(
           'contract.id',
@@ -73,8 +76,7 @@ class ContractControllers {
           `consumerSystem.id`,
           'action.system_id',
         )
-        .where('contract.deleted', false)
-        .orderBy('contract.id', order);
+        .where('contract.deleted', false);
 
       const contracts = (await contractQuery) as ContractJoined[];
 
