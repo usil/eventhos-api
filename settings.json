@@ -8,5 +8,6 @@
   "dataBasePassword": "${DATA_BASE_PASSWORD}",
   "pageSize": 4,
   "cpuCount": "${CPU_COUNT}",
-  "jwtSecret": "${JWT_SECRET}"
+  "jwtSecret": "${JWT_SECRET}",
+  "cryptoKey": "${CRYPTO_KEY}"
 }

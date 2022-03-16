@@ -3,6 +3,8 @@ import ServerInitialization from '../../src/server/ServerInitialization';
 import Route from '../../src/server/util/Route';
 import request from 'supertest';
 import OauthBoot from 'nodeboot-oauth2-starter';
+import knex from 'knex';
+jest.mock('knex');
 
 const testPort = 8081;
 

@@ -12,17 +12,40 @@ export const createRouteEvent = (knexPool: Knex, oauthBoot: any): Route => {
 
   const controllers = new EventControllers(knexPool);
 
-  const authRouter = oauthBoot.bootOauthExpressRouter(eventRoute.router);
+  const authRouter = oauthBoot.bootOauthExpressRouter(
+    eventRoute.router,
+    routeName,
+  );
+
+  authRouter.obPost('/', 'event:create', controllers.createEvent);
 
   authRouter.obPost(
-    '/',
+    '/received',
     ':',
     controllers.eventValidation,
     controllers.getEventContracts,
     controllers.manageEvent,
   );
 
-  authRouter.obGet('/', 'event:select', controllers.listReceivedEvents);
+  authRouter.obGet('/received', 'event:select', controllers.listReceivedEvents);
+
+  authRouter.obGet(
+    '/received/:id',
+    'event:select',
+    controllers.getReceivedEventDetails,
+  );
+
+  authRouter.obGet(
+    '/received/execution-detail/:id',
+    'event:select',
+    controllers.getContractExecutionDetail,
+  );
+
+  authRouter.obGet('/', 'event:select', controllers.getEvents);
+
+  authRouter.obPut('/:id', 'event:update', controllers.updateEvent);
+
+  authRouter.obDelete('/:id', 'event:delete', controllers.deleteEvent);
 
   return eventRoute;
 };
