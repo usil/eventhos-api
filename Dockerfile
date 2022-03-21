@@ -8,6 +8,6 @@ COPY . ./
 
 RUN npm run build
 
-EXPOSE 1000
-ENV PORT 1000
+EXPOSE 1800
+ENV PORT 1800
 ENTRYPOINT ["npm","run","start"]
