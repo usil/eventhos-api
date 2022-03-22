@@ -1,5 +1,5 @@
 import compression from 'compression';
-import express from 'express';
+import express, { Request, Response } from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cors from 'cors';
@@ -110,6 +110,9 @@ class ServerInitialization
     this.app.use(morgan(':method :url'));
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
+    this.app.obGet('/', ':', (req: Request, res: Response) => {
+      return res.status(200).send('Ok');
+    });
   }
 
   /**
