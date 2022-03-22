@@ -39,11 +39,11 @@ Just run `docker-compose up -d`
 
 ## Usage For Development
 
-First run `npm install`. To start development run `npm run dev:start`.
+First run `npm install`. To start development run `npm run dev:start`. By default the app runs in the 2109 port.
 
 ## Usage For Production
 
-For production you should build your app `npm run build` will create a dist file. Then run `npm start`.
+For production you should build your app `npm run build` will create a dist file. Then run `npm start`. By default the app runs in the 2109 port.
 
 ## General usage
 

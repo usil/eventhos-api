@@ -26,8 +26,8 @@ export const getConfig = () => {
   );
 
   configuration = settings;
-
-  configuration.port = parseInt(settings.port);
+  const parsedPort = parseInt(settings.port);
+  configuration.port = isNaN(parsedPort) ? 2109 : parsedPort;
 
   configuration.dataBasePort = parseInt(settings.dataBasePort);
 
