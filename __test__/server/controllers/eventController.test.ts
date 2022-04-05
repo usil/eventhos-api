@@ -8,6 +8,7 @@ import ReceivedEvent from '../../../src/server/dtos/RecivedEvent.dto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import util from 'util';
 
 jest.mock('axios', () => jest.fn().mockReturnValue({ data: 1, headers: 1 }));
 jest.mock('knex', () => {
@@ -52,6 +53,13 @@ jest.mock('knex', () => {
   return jest.fn(() => mKnex);
 });
 describe('Event routes work accordingly', () => {
+  const scryptPromise = util.promisify(crypto.scrypt);
+  let encryptKey: Buffer;
+
+  beforeAll(async () => {
+    encryptKey = (await scryptPromise('secret', 'salt', 32)) as Buffer;
+  });
+
   const mockRes = () => {
     const res: Response = {} as Response;
     res.status = jest.fn().mockReturnValue(res);
@@ -61,7 +69,7 @@ describe('Event routes work accordingly', () => {
   };
 
   it('Creates an axios observable from a json file', async () => {
-    const eventControllers = new EventControllers(knex({}));
+    const eventControllers = new EventControllers(knex({}), encryptKey);
     const obs = eventControllers.createAxiosObservable({
       url: 'url',
     });
@@ -82,7 +90,7 @@ describe('Event routes work accordingly', () => {
       return knex;
     };
 
-    const eventControllers = new EventControllers(mockKnex());
+    const eventControllers = new EventControllers(mockKnex(), encryptKey);
 
     it('Event validation middleware, correct message when no query is send', async () => {
       const mockedNext = jest.fn();
@@ -407,7 +415,7 @@ describe('Event routes work accordingly', () => {
   });
 
   describe('Gets the contract list for an event', () => {
-    const eventControllers = new EventControllers(knex({}));
+    const eventControllers = new EventControllers(knex({}), encryptKey);
 
     it('Not event id send', async () => {
       const mockedNext = jest.fn();
@@ -463,7 +471,10 @@ describe('Event routes work accordingly', () => {
 
       mockResponse.locals.eventId = 1;
 
-      const eventControllersInternal = new EventControllers(mockedKnex);
+      const eventControllersInternal = new EventControllers(
+        mockedKnex,
+        encryptKey,
+      );
 
       await eventControllersInternal.getEventContracts(
         mockReq(),
@@ -518,7 +529,10 @@ describe('Event routes work accordingly', () => {
 
       mockResponse.locals.eventId = 1;
 
-      const eventControllersInternal = new EventControllers(mockedKnex);
+      const eventControllersInternal = new EventControllers(
+        mockedKnex,
+        encryptKey,
+      );
 
       await eventControllersInternal.getEventContracts(
         mockReq(),
@@ -599,7 +613,10 @@ describe('Event routes work accordingly', () => {
         return knex;
       });
 
-      const eventControllers = new EventControllers(knexMock as any);
+      const eventControllers = new EventControllers(
+        knexMock as any,
+        encryptKey,
+      );
       await eventControllers.listReceivedEvents(mockReq(), mockResponse);
       expect(knexMock).toHaveBeenCalledTimes(3);
       expect(mockResponse.status).toHaveBeenCalledWith(200);
@@ -666,7 +683,10 @@ describe('Event routes work accordingly', () => {
         return knex;
       });
 
-      const eventControllers = new EventControllers(knexMock as any);
+      const eventControllers = new EventControllers(
+        knexMock as any,
+        encryptKey,
+      );
       await eventControllers.listReceivedEvents(mockReq(), mockResponse);
       expect(whereMock).toHaveBeenCalledTimes(3);
     });
@@ -705,7 +725,10 @@ describe('Event routes work accordingly', () => {
         return knex;
       });
 
-      const eventControllers = new EventControllers(knexMock as any);
+      const eventControllers = new EventControllers(
+        knexMock as any,
+        encryptKey,
+      );
       await eventControllers.listReceivedEvents(mockReq(), mockResponse);
       expect(mockResponse.status).toHaveBeenCalledWith(500);
     });
@@ -784,7 +807,10 @@ describe('Event routes work accordingly', () => {
         table: jest.fn().mockReturnThis(),
         insert: jest.fn().mockResolvedValue([1]),
       };
-      const eventControllers = new EventControllers(knexMock as any);
+      const eventControllers = new EventControllers(
+        knexMock as any,
+        encryptKey,
+      );
       eventControllers.getVariables = jest.fn().mockReturnValue('goodDATA');
       eventControllers.decryptString = jest
         .fn()
@@ -871,7 +897,10 @@ describe('Event routes work accordingly', () => {
         table: jest.fn().mockReturnThis(),
         insert: jest.fn().mockResolvedValue([1]),
       };
-      const eventControllers = new EventControllers(knexMock as any);
+      const eventControllers = new EventControllers(
+        knexMock as any,
+        encryptKey,
+      );
       eventControllers.getVariables = jest.fn().mockReturnValue('goodDATA');
       eventControllers.decryptString = jest
         .fn()
@@ -906,7 +935,10 @@ describe('Event routes work accordingly', () => {
         table: jest.fn().mockReturnThis(),
         insert: jest.fn().mockResolvedValue([1]),
       };
-      const eventControllers = new EventControllers(knexMock as any);
+      const eventControllers = new EventControllers(
+        knexMock as any,
+        encryptKey,
+      );
       await eventControllers.manageEvent(req, res);
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
@@ -984,7 +1016,10 @@ describe('Event routes work accordingly', () => {
         table: jest.fn().mockReturnThis(),
         insert: jest.fn().mockResolvedValue([1]),
       };
-      const eventControllers = new EventControllers(knexMock as any);
+      const eventControllers = new EventControllers(
+        knexMock as any,
+        encryptKey,
+      );
       await eventControllers.manageEvent(req, res);
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
@@ -1015,7 +1050,10 @@ describe('Event routes work accordingly', () => {
         table: jest.fn().mockReturnThis(),
         insert: jest.fn().mockResolvedValue([1]),
       };
-      const eventControllers = new EventControllers(knexMock as any);
+      const eventControllers = new EventControllers(
+        knexMock as any,
+        encryptKey,
+      );
       await eventControllers.manageEvent(req, res);
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
@@ -1093,7 +1131,10 @@ describe('Event routes work accordingly', () => {
         table: jest.fn().mockReturnThis(),
         insert: jest.fn().mockRejectedValue(new Error('Async Error')),
       };
-      const eventControllers = new EventControllers(knexMock as any);
+      const eventControllers = new EventControllers(
+        knexMock as any,
+        encryptKey,
+      );
       await eventControllers.manageEvent(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
     });
@@ -1119,7 +1160,7 @@ describe('Event routes work accordingly', () => {
       identifier: 'event',
       id: 1,
     };
-    const eventControllers = new EventControllers({} as Knex);
+    const eventControllers = new EventControllers({} as Knex, encryptKey);
     eventControllers.handleDecodeData(decode, client, res, nextFunction, event);
     expect(nextFunction).toHaveBeenCalled();
   });
@@ -1146,7 +1187,7 @@ describe('Event routes work accordingly', () => {
       identifier: 'event',
       id: 3,
     };
-    const eventControllers = new EventControllers({} as Knex);
+    const eventControllers = new EventControllers({} as Knex, encryptKey);
     eventControllers.handleDecodeData(decode, client, res, nextFunction, event);
     expect(nextFunction).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(401);
@@ -1164,7 +1205,7 @@ describe('Event routes work accordingly', () => {
       join: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnValue([{ request: '{}', response: '{}' }]),
     } as any as Knex;
-    const eventControllers = new EventControllers(knexMock);
+    const eventControllers = new EventControllers(knexMock, encryptKey);
     eventControllers.decryptString = jest.fn().mockReturnValue('{}');
     const res = mockRes();
     await eventControllers.getContractExecutionDetail(req, res);
@@ -1184,7 +1225,7 @@ describe('Event routes work accordingly', () => {
       join: jest.fn().mockReturnThis(),
       where: jest.fn().mockRejectedValue(new Error('Async error')),
     } as any as Knex;
-    const eventControllers = new EventControllers(knexMock);
+    const eventControllers = new EventControllers(knexMock, encryptKey);
     eventControllers.decryptString = jest.fn().mockReturnValue('{}');
     const res = mockRes();
     await eventControllers.getContractExecutionDetail(req, res);
@@ -1214,7 +1255,7 @@ describe('Event routes work accordingly', () => {
       orderBy: jest.fn().mockReturnThis(),
     } as any as Knex;
 
-    const eventControllers = new EventControllers(knex);
+    const eventControllers = new EventControllers(knex, encryptKey);
     await eventControllers.getEvents(req, res);
 
     expect(knex.table).toHaveBeenCalledWith('event');
@@ -1242,7 +1283,7 @@ describe('Event routes work accordingly', () => {
       orderBy: jest.fn().mockReturnThis(),
     } as any as Knex;
 
-    const eventControllers = new EventControllers(knex);
+    const eventControllers = new EventControllers(knex, encryptKey);
     await eventControllers.getEvents(req, res);
 
     expect(res.status).not.toHaveBeenCalledWith(200);
@@ -1265,7 +1306,7 @@ describe('Event routes work accordingly', () => {
 
     const res = mockRes();
 
-    const eventControllers = new EventControllers(knexMock);
+    const eventControllers = new EventControllers(knexMock, encryptKey);
     await eventControllers.deleteEvent(req, res);
 
     expect(knexMock.table).toBeCalledWith('contract');
@@ -1297,7 +1338,7 @@ describe('Event routes work accordingly', () => {
 
     const res = mockRes();
 
-    const eventControllers = new EventControllers(knexMock);
+    const eventControllers = new EventControllers(knexMock, encryptKey);
     await eventControllers.deleteEvent(req, res);
 
     expect(knexMock.table).toBeCalledWith('contract');
@@ -1326,7 +1367,7 @@ describe('Event routes work accordingly', () => {
 
     const res = mockRes();
 
-    const eventControllers = new EventControllers(knexMock);
+    const eventControllers = new EventControllers(knexMock, encryptKey);
     await eventControllers.deleteEvent(req, res);
 
     expect(res.status).not.toHaveBeenCalledWith(201);
@@ -1350,7 +1391,7 @@ describe('Event routes work accordingly', () => {
     } as any as Knex;
     const res = mockRes();
 
-    const eventControllers = new EventControllers(knexMock);
+    const eventControllers = new EventControllers(knexMock, encryptKey);
     await eventControllers.updateEvent(req, res);
 
     expect(knexMock.table).toHaveBeenCalledWith('event');
@@ -1385,7 +1426,7 @@ describe('Event routes work accordingly', () => {
     } as any as Knex;
     const res = mockRes();
 
-    const eventControllers = new EventControllers(knexMock);
+    const eventControllers = new EventControllers(knexMock, encryptKey);
     await eventControllers.updateEvent(req, res);
 
     expect(res.status).not.toHaveBeenLastCalledWith(201);
@@ -1411,7 +1452,7 @@ describe('Event routes work accordingly', () => {
     } as any as Knex;
     const res = mockRes();
 
-    const eventControllers = new EventControllers(knexMock);
+    const eventControllers = new EventControllers(knexMock, encryptKey);
     await eventControllers.createEvent(req, res);
 
     expect(knexMock.table).toHaveBeenCalledWith('event');
@@ -1446,7 +1487,7 @@ describe('Event routes work accordingly', () => {
     } as any as Knex;
     const res = mockRes();
 
-    const eventControllers = new EventControllers(knexMock);
+    const eventControllers = new EventControllers(knexMock, encryptKey);
     await eventControllers.createEvent(req, res);
 
     expect(res.status).not.toHaveBeenCalledWith(201);
@@ -1461,7 +1502,7 @@ describe('Event routes work accordingly', () => {
       { id: 2, randomField: 'p', similarField: 'z' },
       { id: 2, randomField: 'p1', similarField: 'z1' },
     ];
-    const eventControllers = new EventControllers({} as any);
+    const eventControllers = new EventControllers({} as any, encryptKey);
     const joinResult = eventControllers.joinSearch(
       baseSearchResult,
       'id',
@@ -1495,7 +1536,7 @@ describe('Event routes work accordingly', () => {
       where: jest.fn().mockResolvedValue([{ received_request: 'x' }]),
     } as any as Knex;
 
-    const eventControllers = new EventControllers(knexMock);
+    const eventControllers = new EventControllers(knexMock, encryptKey);
     eventControllers.decryptString = jest.fn().mockReturnValue('{"x": 1}');
     await eventControllers.getReceivedEventDetails(req, res);
 
@@ -1562,44 +1603,36 @@ describe('Event routes work accordingly', () => {
       where: jest.fn().mockRejectedValue(new Error('Async error')),
     } as any as Knex;
 
-    const eventControllers = new EventControllers(knexMock);
+    const eventControllers = new EventControllers(knexMock, encryptKey);
     eventControllers.decryptString = jest.fn().mockReturnValue('{"x": 1}');
     await eventControllers.getReceivedEventDetails(req, res);
 
     expect(res.status).not.toHaveBeenCalledWith(200);
   });
 
-  it('Decrypt string', () => {
-    const spyCryptoSpy = jest
-      .spyOn(crypto, 'scryptSync')
-      .mockReturnValue('key' as any);
+  it('Decrypt string', async () => {
     const spyCryptoSpyDecipher = jest
       .spyOn(crypto, 'createDecipheriv')
       .mockReturnValue({
         update: jest.fn().mockReturnValue('x'),
         final: jest.fn().mockReturnValue('x'),
       } as any);
-    const eventController = new EventControllers({} as Knex);
-    eventController.decryptString('x|.|x');
-    expect(spyCryptoSpy).toHaveBeenCalled();
-    spyCryptoSpy.mockRestore();
+    const eventController = new EventControllers({} as Knex, encryptKey);
+    const result = await eventController.decryptString('x|.|x');
+    expect(result).toBe('xx');
     spyCryptoSpyDecipher.mockRestore();
   });
 
-  it('Encrypt string', () => {
-    const spyCryptoSpy = jest
-      .spyOn(crypto, 'scryptSync')
-      .mockReturnValue('key' as any);
+  it('Encrypt string', async () => {
     const spyCryptoSpyDecipher = jest
       .spyOn(crypto, 'createCipheriv')
       .mockReturnValue({
         update: jest.fn().mockReturnValue('x'),
         final: jest.fn().mockReturnValue('x'),
       } as any);
-    const eventController = new EventControllers({} as Knex);
-    eventController.encryptString('x|.|x');
-    expect(spyCryptoSpy).toHaveBeenCalled();
-    spyCryptoSpy.mockRestore();
+    const eventController = new EventControllers({} as Knex, encryptKey);
+    const result = await eventController.encryptString('x|.|x');
+    expect(result.encryptedData).toBe('xx');
     spyCryptoSpyDecipher.mockRestore();
   });
 
@@ -1636,7 +1669,7 @@ describe('Event routes work accordingly', () => {
       table: jest.fn().mockReturnThis(),
       insert: jest.fn().mockResolvedValue([1]),
     } as any as Knex;
-    const eventController = new EventControllers(knexMock);
+    const eventController = new EventControllers(knexMock, encryptKey);
     await eventController.handleNextAxiosSubscription(res, contract, [1]);
     expect(knexMock.table).toHaveBeenCalledWith('contract_exc_detail');
     expect(knexMock.insert).toHaveBeenCalledTimes(2);
@@ -1649,7 +1682,7 @@ describe('Event routes work accordingly', () => {
         test: 1,
       },
     };
-    const eventController = new EventControllers({} as any);
+    const eventController = new EventControllers({} as any, encryptKey);
     eventController.getVariables = jest.fn().mockReturnValue('test');
     const result = eventController.parseBodyData(dataMock, {} as any);
     expect(eventController.getVariables).toBeCalledTimes(1);
@@ -1657,7 +1690,7 @@ describe('Event routes work accordingly', () => {
   });
 
   it('IsJsonString function works', () => {
-    const eventController = new EventControllers({} as any);
+    const eventController = new EventControllers({} as any, encryptKey);
     const isJsonFirst = eventController.IsJsonString('2');
     const isJsonSecond = eventController.IsJsonString('x:x');
     expect(isJsonFirst).toBe(true);
@@ -1680,7 +1713,7 @@ describe('Event routes work accordingly', () => {
         },
       },
     };
-    const eventController = new EventControllers({} as any);
+    const eventController = new EventControllers({} as any, encryptKey);
     const variableOne = eventController.getVariables(
       'notVariable',
       0,

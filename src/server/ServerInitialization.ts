@@ -82,8 +82,8 @@ class ServerInitialization
         password: this.configuration.dataBasePassword,
         database: this.configuration.dataBaseName,
       },
-      acquireConnectionTimeout: 10000,
-      pool: { min: 20, max: 400 },
+      acquireConnectionTimeout: 20000,
+      pool: { min: 100, max: 600 },
     });
 
     this.knexAuthDataBase = knex({
