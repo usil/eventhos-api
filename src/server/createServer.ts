@@ -22,7 +22,7 @@ export const newServer = async (port: number) => {
   await serverInit.init();
 
   const encryptKey = (await scryptPromise(
-    getConfig().cryptoKey,
+    getConfig().encryption.key,
     'salt',
     32,
   )) as Buffer;

@@ -98,15 +98,19 @@ class EventControllers {
         });
       }
 
-      jwt.verify(systemKey, getConfig().jwtSecret, (err: any, decode: any) => {
-        if (err) {
-          return res.status(401).json({
-            code: 400001,
-            message: 'Incorrect token',
-          });
-        }
-        this.handleDecodeData(decode, client, res, next, event);
-      });
+      jwt.verify(
+        systemKey,
+        getConfig().oauth2.jwtSecret,
+        (err: any, decode: any) => {
+          if (err) {
+            return res.status(401).json({
+              code: 400001,
+              message: 'Incorrect token',
+            });
+          }
+          this.handleDecodeData(decode, client, res, next, event);
+        },
+      );
     } catch (error) {
       this.returnError(error, res);
     }
@@ -310,7 +314,7 @@ class EventControllers {
 
           const authResult = await axios({
             ...jsonAxiosBaseAuthConfig,
-            timeout: 11500 * 3,
+            timeout: getConfig().subscription.timeout,
           });
 
           parsedReq.oauthResponse = {
@@ -943,9 +947,9 @@ class EventControllers {
    * @description Creates an observable given an axios config
    */
   createAxiosObservable = (axiosConfig: AxiosRequestConfig) => {
-    return defer(() => axios({ ...axiosConfig, timeout: 11500 * 3 })).pipe(
-      take(1),
-    );
+    return defer(() =>
+      axios({ ...axiosConfig, timeout: getConfig().subscription.timeout }),
+    ).pipe(take(1));
   };
 
   returnError = (error: any, res: Response) => {

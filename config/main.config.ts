@@ -25,18 +25,29 @@ export const getConfig = () => {
     path.resolve(__dirname, '../settings.json'),
   );
 
+  console.log(settings);
+
   configuration = settings;
+
   const parsedPort = parseInt(settings.port);
+
   configuration.port = isNaN(parsedPort) ? 2109 : parsedPort;
 
-  configuration.dataBasePort = parseInt(settings.dataBasePort);
+  configuration.dataBase.port = parseInt(settings.dataBase.port);
 
-  configuration.port = parseInt(settings.port);
+  configuration.dataBase.acquireConnectionTimeout = parseInt(
+    settings.dataBase.acquireConnectionTimeout,
+  );
+
+  configuration.dataBase.poolMin = parseInt(settings.dataBase.poolMin);
+
+  configuration.dataBase.poolMax = parseInt(settings.dataBase.poolMax);
 
   configuration.cpuCount = parseInt(settings.cpuCount);
 
   configuration.log = (): bunyan =>
     getLogger(process.env.NODE_ENV.toUpperCase(), version);
 
+  console.log(configuration);
   return configuration;
 };

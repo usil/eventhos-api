@@ -25,7 +25,6 @@ class ServerInitialization
   port: number;
   routes: string[] = [];
   knexPool: Knex;
-  knexAuthDataBase: Knex;
 
   oauthBoot: any;
 
@@ -42,9 +41,9 @@ class ServerInitialization
 
     const oauthBoot = new OauthBoot(
       localApp,
-      this.knexAuthDataBase,
-      this.configuration.jwtSecret,
-      this.configuration.cryptoKey,
+      this.knexPool,
+      this.configuration.oauth2.jwtSecret,
+      this.configuration.encryption.key,
       [],
       'eventhos_api',
       '::usil.app',
@@ -63,7 +62,6 @@ class ServerInitialization
     try {
       await this.oauthBoot.init();
     } catch (error) {
-      console.log(error);
       throw new Error('An error ocurred while creating the server');
     }
   }
@@ -76,27 +74,18 @@ class ServerInitialization
       client: 'mysql2',
       version: '5.7',
       connection: {
-        host: this.configuration.dataBaseHost,
-        port: this.configuration.dataBasePort,
-        user: this.configuration.dataBaseUser,
-        password: this.configuration.dataBasePassword,
-        database: this.configuration.dataBaseName,
+        host: this.configuration.dataBase.host,
+        port: this.configuration.dataBase.port,
+        user: this.configuration.dataBase.user,
+        password: this.configuration.dataBase.password,
+        database: this.configuration.dataBase.name,
       },
-      acquireConnectionTimeout: 20000,
-      pool: { min: 100, max: 600 },
-    });
-
-    this.knexAuthDataBase = knex({
-      client: 'mysql2',
-      version: '5.7',
-      connection: {
-        host: this.configuration.dataBaseHost,
-        port: this.configuration.dataBasePort,
-        user: this.configuration.dataBaseUser,
-        password: this.configuration.dataBasePassword,
-        database: this.configuration.dataBaseName,
+      acquireConnectionTimeout:
+        this.configuration.dataBase.acquireConnectionTimeout,
+      pool: {
+        min: this.configuration.dataBase.poolMin,
+        max: this.configuration.dataBase.poolMax,
       },
-      pool: { min: 0, max: 5 },
     });
   }
 

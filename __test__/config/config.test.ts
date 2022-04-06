@@ -19,11 +19,11 @@ describe('Correct configuration declaration', () => {
   });
 
   it('Correct database host', () => {
-    expect(configuration.dataBaseHost).toBeTruthy();
-    expect(configuration.dataBaseHost).toEqual(expect.any(String));
+    expect(configuration.dataBase.host).toBeTruthy();
+    expect(configuration.dataBase.host).toEqual(expect.any(String));
   });
 
   it('Correct database password', () => {
-    expect(configuration.dataBasePassword).toBeTruthy();
+    expect(configuration.dataBase.password).toBeTruthy();
   });
 });
