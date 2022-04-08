@@ -25,8 +25,6 @@ export const getConfig = () => {
     path.resolve(__dirname, '../settings.json'),
   );
 
-  console.log(settings);
-
   configuration = settings;
 
   const parsedPort = parseInt(settings.port);
@@ -48,6 +46,5 @@ export const getConfig = () => {
   configuration.log = (): bunyan =>
     getLogger(process.env.NODE_ENV.toUpperCase(), version);
 
-  console.log(configuration);
   return configuration;
 };
