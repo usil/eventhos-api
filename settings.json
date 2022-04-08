@@ -1,13 +1,24 @@
 {
   "state": "${NODE_ENV}",
   "port": "${PORT}",
-  "dataBaseName": "${DATA_BASE_NAME}",
-  "dataBaseHost": "${DATA_BASE_HOST}",
-  "dataBasePort": "${DATA_BASE_PORT}",
-  "dataBaseUser": "${DATA_BASE_USER}",
-  "dataBasePassword": "${DATA_BASE_PASSWORD}",
-  "pageSize": 4,
   "cpuCount": "${CPU_COUNT}",
-  "jwtSecret": "${JWT_SECRET}",
-  "cryptoKey": "${CRYPTO_KEY}"
+  "dataBase": {
+    "name": "${DATA_BASE_NAME}",
+    "host": "${DATA_BASE_HOST}",
+    "port": "${DATA_BASE_PORT}",
+    "user": "${DATA_BASE_USER}",
+    "password": "${DATA_BASE_PASSWORD}",
+    "acquireConnectionTimeout": "${DATA_BASE_ACQUIRE_CONNECTION_TIMEOUT}",
+    "poolMax": "${DATA_BASE_POOL_MAX}",
+    "poolMin": "${DATA_BASE_POOL_MIN}"
+  },
+  "subscription": {
+    "timeout": 50000
+  },
+  "oauth2": {
+    "jwtSecret": "${JWT_SECRET}"
+  },
+  "encryption": {
+    "key": "${CRYPTO_KEY}"
+  }
 }

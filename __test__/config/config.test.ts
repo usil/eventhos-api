@@ -18,17 +18,12 @@ describe('Correct configuration declaration', () => {
     expect(configuration.port).toBeGreaterThan(-1);
   });
 
-  it('Correct mysql port', () => {
-    expect(configuration.dataBasePort).toEqual(expect.any(Number));
-    expect(configuration.dataBasePort).toBeGreaterThan(-1);
-  });
-
   it('Correct database host', () => {
-    expect(configuration.dataBaseHost).toBeTruthy();
-    expect(configuration.dataBaseHost).toEqual(expect.any(String));
+    expect(configuration.dataBase.host).toBeTruthy();
+    expect(configuration.dataBase.host).toEqual(expect.any(String));
   });
 
   it('Correct database password', () => {
-    expect(configuration.dataBasePassword).toBeTruthy();
+    expect(configuration.dataBase.password).toBeTruthy();
   });
 });

@@ -5,12 +5,16 @@ import Route from '../util/Route';
 /**
  * @description Create a route
  */
-export const createRouteEvent = (knexPool: Knex, oauthBoot: any): Route => {
+export const createRouteEvent = (
+  knexPool: Knex,
+  oauthBoot: any,
+  encryptionKey: Buffer,
+): Route => {
   const routeName = '/event';
 
   const eventRoute = new Route(routeName);
 
-  const controllers = new EventControllers(knexPool);
+  const controllers = new EventControllers(knexPool, encryptionKey);
 
   const authRouter = oauthBoot.bootOauthExpressRouter(
     eventRoute.router,

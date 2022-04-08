@@ -1,5 +1,7 @@
 import { createRouteEvent } from './../../../src/server/routes/eventRoute';
 import { Knex } from 'knex';
+import util from 'util';
+import crypto from 'crypto';
 
 const knex = {} as any as Knex;
 
@@ -15,8 +17,12 @@ const oauthBoot = {
 };
 
 describe('Event routes works', () => {
-  it('Adds all routes', () => {
-    const actionRouteResult = createRouteEvent(knex, oauthBoot);
+  const scryptPromise = util.promisify(crypto.scrypt);
+
+  it('Adds all routes', async () => {
+    const encryptKey = (await scryptPromise('secret', 'salt', 32)) as Buffer;
+
+    const actionRouteResult = createRouteEvent(knex, oauthBoot, encryptKey);
 
     expect(mockSecureExpress.obPost).toHaveBeenCalledWith(
       '/',

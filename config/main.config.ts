@@ -26,12 +26,20 @@ export const getConfig = () => {
   );
 
   configuration = settings;
+
   const parsedPort = parseInt(settings.port);
+
   configuration.port = isNaN(parsedPort) ? 2109 : parsedPort;
 
-  configuration.dataBasePort = parseInt(settings.dataBasePort);
+  configuration.dataBase.port = parseInt(settings.dataBase.port);
 
-  configuration.port = parseInt(settings.port);
+  configuration.dataBase.acquireConnectionTimeout = parseInt(
+    settings.dataBase.acquireConnectionTimeout,
+  );
+
+  configuration.dataBase.poolMin = parseInt(settings.dataBase.poolMin);
+
+  configuration.dataBase.poolMax = parseInt(settings.dataBase.poolMax);
 
   configuration.cpuCount = parseInt(settings.cpuCount);
 

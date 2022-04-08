@@ -133,7 +133,6 @@ class SystemController {
         .orderBy(activeSort, order);
 
       if (systemClass) {
-        console.log('here');
         systemsQuery = systemsQuery
           .where({ class: systemClass })
           .orWhere('class', 'hybrid');

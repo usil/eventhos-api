@@ -6,15 +6,27 @@ import bunyan from 'bunyan';
 export class ConfigGlobalDto {
   state: string;
   port: number;
-  dataBaseName: string;
-  log: () => bunyan;
-  dataBaseHost: string;
-  dataBasePort: number;
-  dataBaseUser: string;
-  dataBasePassword: string;
   cpuCount: number;
-  jwtSecret: string;
-  cryptoKey: string;
+  dataBase: {
+    name: string;
+    host: string;
+    port: number;
+    user: string;
+    password: string;
+    acquireConnectionTimeout: number;
+    poolMax: number;
+    poolMin: number;
+  };
+  subscription: {
+    timeout: number;
+  };
+  oauth2: {
+    jwtSecret: string;
+  };
+  encryption: {
+    key: string;
+  };
+  log: () => bunyan;
 }
 
 export default new ConfigGlobalDto();

@@ -75,7 +75,7 @@ class ActionControllers {
 
       const algorithm = 'aes-256-ctr';
       const initVector = crypto.randomBytes(16);
-      const key = crypto.scryptSync(getConfig().cryptoKey, 'salt', 32);
+      const key = crypto.scryptSync(getConfig().encryption.key, 'salt', 32);
       const cipher = crypto.createCipheriv(algorithm, key, initVector);
 
       let encryptedData = cipher.update(
@@ -123,7 +123,11 @@ class ActionControllers {
       );
 
       const initSecurityVector = crypto.randomBytes(16);
-      const securityKey = crypto.scryptSync(getConfig().cryptoKey, 'salt', 32);
+      const securityKey = crypto.scryptSync(
+        getConfig().encryption.key,
+        'salt',
+        32,
+      );
       const securityCipher = crypto.createCipheriv(
         algorithm,
         securityKey,
@@ -290,7 +294,7 @@ class ActionControllers {
     const keySplit = stringToDecrypt.split('|.|');
     const encryptedPart = keySplit[1];
     const initVector = Buffer.from(keySplit[0], 'hex');
-    const key = crypto.scryptSync(getConfig().cryptoKey, 'salt', 32);
+    const key = crypto.scryptSync(getConfig().encryption.key, 'salt', 32);
     const decipher = crypto.createDecipheriv(algorithm, key, initVector);
     let decryptedData = decipher.update(encryptedPart, 'hex', 'utf-8');
     decryptedData += decipher.final('utf8');
@@ -411,7 +415,7 @@ class ActionControllers {
   encryptString(stringToEncrypt: string) {
     const algorithm = 'aes-256-ctr';
     const initVector = crypto.randomBytes(16);
-    const key = crypto.scryptSync(getConfig().cryptoKey, 'salt', 32);
+    const key = crypto.scryptSync(getConfig().encryption.key, 'salt', 32);
     const cipher = crypto.createCipheriv(algorithm, key, initVector);
     let encryptedData = cipher.update(stringToEncrypt, 'utf-8', 'hex');
     const hexedInitVector = initVector.toString('hex');

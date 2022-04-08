@@ -16,11 +16,14 @@ import crypto from 'crypto';
 import jp from 'jsonpath';
 import { ParsedQs } from 'qs';
 import controllerHelpers from './helpers/controller-helpers';
-
+import util from 'util';
 class EventControllers {
   knexPool: Knex;
-  constructor(knexPool: Knex) {
+  scryptPromise = util.promisify(crypto.scrypt);
+  encryptionKey: Buffer;
+  constructor(knexPool: Knex, encryptionKey: Buffer) {
     this.knexPool = knexPool;
+    this.encryptionKey = encryptionKey;
   }
   /**
    *
@@ -95,15 +98,19 @@ class EventControllers {
         });
       }
 
-      jwt.verify(systemKey, getConfig().jwtSecret, (err: any, decode: any) => {
-        if (err) {
-          return res.status(401).json({
-            code: 400001,
-            message: 'Incorrect token',
-          });
-        }
-        this.handleDecodeData(decode, client, res, next, event);
-      });
+      jwt.verify(
+        systemKey,
+        getConfig().oauth2.jwtSecret,
+        (err: any, decode: any) => {
+          if (err) {
+            return res.status(401).json({
+              code: 400001,
+              message: 'Incorrect token',
+            });
+          }
+          this.handleDecodeData(decode, client, res, next, event);
+        },
+      );
     } catch (error) {
       this.returnError(error, res);
     }
@@ -171,7 +178,7 @@ class EventControllers {
           url: req.protocol + '://' + req.get('host') + req.originalUrl,
         };
 
-        const baseRequestEncryption = this.encryptString(
+        const baseRequestEncryption = await this.encryptString(
           JSON.stringify(basicRequest),
         );
 
@@ -182,7 +189,6 @@ class EventControllers {
             '|.|' +
             baseRequestEncryption.encryptedData,
         });
-        console.log('herex3');
 
         return res.status(203).json({
           code: 200310,
@@ -211,10 +217,10 @@ class EventControllers {
         .where('contract_exc_detail.id', id);
       const parsedResult = result[0];
       parsedResult.request = JSON.parse(
-        this.decryptString(parsedResult.request),
+        await this.decryptString(parsedResult.request),
       );
       parsedResult.response = JSON.parse(
-        this.decryptString(parsedResult.response),
+        await this.decryptString(parsedResult.response),
       );
       return res.status(200).json({
         code: 200000,
@@ -270,7 +276,7 @@ class EventControllers {
         url: req.protocol + '://' + req.get('host') + req.originalUrl,
       };
 
-      const baseRequestEncryption = this.encryptString(
+      const baseRequestEncryption = await this.encryptString(
         JSON.stringify(basicRequest),
       );
 
@@ -292,19 +298,24 @@ class EventControllers {
         },
       };
 
-      console.log(
-        colors.yellow.bgBlack(
-          `${receivedEvent} wil be executed at ${new Date().toLocaleString()}:${new Date().getMilliseconds()}`,
-        ),
-      );
+      // console.log(
+      //   colors.yellow.bgBlack(
+      //     `${receivedEvent} wil be executed at ${new Date().toLocaleString()}:${new Date().getMilliseconds()}`,
+      //   ),
+      // );
 
       for (const contract of eventContracts) {
         if (contract.action_security.type === 'oauth2_client') {
           const jsonAxiosBaseAuthConfig = JSON.parse(
-            this.decryptString(contract.action_security.http_configuration),
+            await this.decryptString(
+              contract.action_security.http_configuration,
+            ),
           ) as AxiosRequestConfig;
 
-          const authResult = await axios(jsonAxiosBaseAuthConfig);
+          const authResult = await axios({
+            ...jsonAxiosBaseAuthConfig,
+            timeout: getConfig().subscription.timeout,
+          });
 
           parsedReq.oauthResponse = {
             body: authResult.data,
@@ -313,7 +324,7 @@ class EventControllers {
         }
 
         const jsonAxiosBaseConfig = JSON.parse(
-          this.decryptString(contract.action.http_configuration),
+          await this.decryptString(contract.action.http_configuration),
         ) as AxiosRequestConfig;
 
         const parsedHeaders: Record<string, string> = {};
@@ -390,10 +401,10 @@ class EventControllers {
                   params: error.config.params,
                   method: error.config.method,
                 };
-                const encryptResultResponse = this.encryptString(
+                const encryptResultResponse = await this.encryptString(
                   JSON.stringify(errorResponse),
                 );
-                const encryptResultRequest = this.encryptString(
+                const encryptResultRequest = await this.encryptString(
                   JSON.stringify(errorRequest),
                 );
                 await this.knexPool.table('contract_exc_try').insert({
@@ -454,10 +465,10 @@ class EventControllers {
         params: res.config.params,
         method: res.config.method,
       };
-      const encryptResultResponse = this.encryptString(
+      const encryptResultResponse = await this.encryptString(
         JSON.stringify(successResponse),
       );
-      const encryptResultRequest = this.encryptString(
+      const encryptResultRequest = await this.encryptString(
         JSON.stringify(successRequest),
       );
       await this.knexPool.table('contract_exc_try').insert({
@@ -477,11 +488,14 @@ class EventControllers {
     }
   };
 
-  encryptString(stringToEncrypt: string) {
+  async encryptString(stringToEncrypt: string) {
     const algorithm = 'aes-256-ctr';
     const initVector = crypto.randomBytes(16);
-    const key = crypto.scryptSync(getConfig().cryptoKey, 'salt', 32);
-    const cipher = crypto.createCipheriv(algorithm, key, initVector);
+    const cipher = crypto.createCipheriv(
+      algorithm,
+      this.encryptionKey,
+      initVector,
+    );
     let encryptedData = cipher.update(stringToEncrypt, 'utf-8', 'hex');
     const hexedInitVector = initVector.toString('hex');
     encryptedData += cipher.final('hex');
@@ -738,7 +752,7 @@ class EventControllers {
       const receivedEvent = receivedEventSearch[0];
 
       receivedEvent.received_request = JSON.parse(
-        this.decryptString(receivedEvent.received_request),
+        await this.decryptString(receivedEvent.received_request),
       );
 
       const searchResult = await this.knexPool
@@ -769,13 +783,16 @@ class EventControllers {
     }
   };
 
-  decryptString(stringToDecrypt: string) {
+  async decryptString(stringToDecrypt: string) {
     const algorithm = 'aes-256-ctr';
     const keySplit = stringToDecrypt.split('|.|');
     const encryptedPart = keySplit[1];
     const initVector = Buffer.from(keySplit[0], 'hex');
-    const key = crypto.scryptSync(getConfig().cryptoKey, 'salt', 32);
-    const decipher = crypto.createDecipheriv(algorithm, key, initVector);
+    const decipher = crypto.createDecipheriv(
+      algorithm,
+      this.encryptionKey,
+      initVector,
+    );
     let decryptedData = decipher.update(encryptedPart, 'hex', 'utf-8');
     decryptedData += decipher.final('utf8');
     return decryptedData;
@@ -930,7 +947,9 @@ class EventControllers {
    * @description Creates an observable given an axios config
    */
   createAxiosObservable = (axiosConfig: AxiosRequestConfig) => {
-    return defer(() => axios({ ...axiosConfig })).pipe(take(1));
+    return defer(() =>
+      axios({ ...axiosConfig, timeout: getConfig().subscription.timeout }),
+    ).pipe(take(1));
   };
 
   returnError = (error: any, res: Response) => {
