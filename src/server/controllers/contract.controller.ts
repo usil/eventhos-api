@@ -13,7 +13,7 @@ class ContractControllers {
 
   createContract = async (req: Request, res: Response) => {
     try {
-      const { eventId, actionId, name, identifier } = req.body;
+      const { eventId, actionId, name, identifier, order } = req.body;
 
       const contractCreationResult = await this.knexPool
         .table('contract')
@@ -22,6 +22,7 @@ class ContractControllers {
           identifier,
           event_id: eventId,
           action_id: actionId,
+          order,
         });
 
       return res.status(201).json({
@@ -57,6 +58,7 @@ class ContractControllers {
           'contract.id',
           'contract.name',
           'contract.active',
+          'contract.order',
           'event.id as eventId',
           'action.id as actionId',
           'producerSystem.name as producerName',
@@ -96,14 +98,36 @@ class ContractControllers {
     }
   };
 
+  getContractsFromEvent = async (req: Request, res: Response) => {
+    try {
+      const { eventId } = req.params;
+
+      const contractQuery = this.knexPool
+        .table('contract')
+        .where('event_id', eventId)
+        .orderBy('order', 'asc');
+
+      const contracts = (await contractQuery) as ContractJoined[];
+
+      return res.status(200).json({
+        code: 200000,
+        message: 'success',
+        content: contracts,
+      });
+    } catch (error) {
+      this.returnError(error.message, res);
+    }
+  };
+
   updateContract = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { name, active } = req.body;
+      const { name, active, order } = req.body;
       await this.knexPool
         .table('contract')
         .update({
           name,
+          order,
           active,
         })
         .where('id', id);
@@ -124,6 +148,25 @@ class ContractControllers {
         .table('contract')
         .update('deleted', true)
         .where('id', id);
+
+      return res.status(201).json({
+        code: 200001,
+        message: 'success',
+      });
+    } catch (error) {
+      this.returnError(error.message, res);
+    }
+  };
+
+  editContractOrders = async (req: Request, res: Response) => {
+    try {
+      const orders = req.body.orders as { contractId: number; order: number }[];
+      for (const order of orders) {
+        await this.knexPool
+          .table('contract')
+          .update('order', order.order)
+          .where('id', order.contractId);
+      }
 
       return res.status(201).json({
         code: 200001,

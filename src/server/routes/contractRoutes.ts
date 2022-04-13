@@ -21,9 +21,17 @@ export const createRouteContract = (knexPool: Knex, oauthBoot: any): Route => {
 
   authRouter.obGet('/', 'contract:select', controllers.getContracts);
 
+  authRouter.obPut('/order', 'contract:update', controllers.editContractOrders);
+
   authRouter.obPut('/:id', 'contract:update', controllers.updateContract);
 
   authRouter.obDelete('/:id', 'contract:delete', controllers.deleteContract);
+
+  authRouter.obGet(
+    '/event/:eventId',
+    'contract:select',
+    controllers.getContractsFromEvent,
+  );
 
   return contractRoute;
 };

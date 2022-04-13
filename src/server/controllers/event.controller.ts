@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { Knex } from 'knex';
-import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { defer, take } from 'rxjs';
+import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { concat, defer, merge, Observable, take } from 'rxjs';
 import {
   Action,
   ActionSecurity,
@@ -17,6 +17,14 @@ import jp from 'jsonpath';
 import { ParsedQs } from 'qs';
 import controllerHelpers from './helpers/controller-helpers';
 import util from 'util';
+import Logger from 'bunyan';
+
+interface EventContract {
+  action: Action;
+  event: Event;
+  contract: Contract;
+  action_security: ActionSecurity;
+}
 class EventControllers {
   knexPool: Knex;
   scryptPromise = util.promisify(crypto.scrypt);
@@ -161,6 +169,7 @@ class EventControllers {
         .join('action', 'contract.action_id', 'action.id')
         .join('action_security', 'action.id', 'action_security.action_id')
         .options({ nestTables: true })
+        .orderBy('contract.order', 'asc')
         .where('contract.event_id', res.locals.eventId)
         .where('contract.active', true)
         .andWhere('contract.deleted', false)) as {
@@ -261,12 +270,7 @@ class EventControllers {
 
       const eventId = res.locals.eventId as number;
 
-      const eventContracts = res.locals.eventContracts as {
-        action: Action;
-        event: Event;
-        contract: Contract;
-        action_security: ActionSecurity;
-      }[];
+      const eventContracts = res.locals.eventContracts as EventContract[];
 
       const basicRequest = {
         headers: req.headers,
@@ -298,133 +302,34 @@ class EventControllers {
         },
       };
 
-      // console.log(
-      //   colors.yellow.bgBlack(
-      //     `${receivedEvent} wil be executed at ${new Date().toLocaleString()}:${new Date().getMilliseconds()}`,
-      //   ),
-      // );
+      const mergedContractExecutions: Observable<
+        | {
+            message: string;
+            error?: undefined;
+          }
+        | {
+            message: string;
+            error: any;
+          }
+      >[] = [];
 
-      for (const contract of eventContracts) {
-        if (contract.action_security.type === 'oauth2_client') {
-          const jsonAxiosBaseAuthConfig = JSON.parse(
-            await this.decryptString(
-              contract.action_security.http_configuration,
-            ),
-          ) as AxiosRequestConfig;
+      const orderedContracts =
+        this.generateOrderFromEventContracts(eventContracts);
 
-          const authResult = await axios({
-            ...jsonAxiosBaseAuthConfig,
-            timeout: getConfig().subscription.timeout,
-          });
-
-          parsedReq.oauthResponse = {
-            body: authResult.data,
-            headers: authResult.headers,
-          };
-        }
-
-        const jsonAxiosBaseConfig = JSON.parse(
-          await this.decryptString(contract.action.http_configuration),
-        ) as AxiosRequestConfig;
-
-        const parsedHeaders: Record<string, string> = {};
-        const parsedQueryParams: Record<string, string> = {};
-        let parsedBody: Record<string, any> = {};
-
-        for (const headerKey in jsonAxiosBaseConfig.headers) {
-          const header = jsonAxiosBaseConfig.headers[headerKey];
-          const parsedHeader = this.getVariables(
-            header,
-            0,
-            parsedReq,
-            'header',
-          );
-          parsedHeaders[headerKey] = parsedHeader;
-        }
-
-        for (const paramKey in jsonAxiosBaseConfig.params) {
-          const param = jsonAxiosBaseConfig.params[paramKey];
-          const parsedParam = this.getVariables(param, 0, parsedReq, 'param');
-          parsedQueryParams[paramKey] = parsedParam;
-        }
-
-        const fullParsedBody = {
-          ...this.parseBodyData(jsonAxiosBaseConfig.data, parsedReq),
-        };
-
-        if (JSON.stringify(jsonAxiosBaseConfig.data) === '{}') {
-          parsedBody = { ...req.body };
-        } else {
-          parsedBody = {
-            ...fullParsedBody,
-          };
-        }
-
-        const httpConfiguration: AxiosRequestConfig = {
-          url: jsonAxiosBaseConfig.url,
-          method: jsonAxiosBaseConfig.method,
-          headers: {
-            ...parsedHeaders,
-            eventhosStartDate: new Date().toISOString(),
-          },
-          params: { ...parsedQueryParams },
-          data: parsedBody,
-        };
-
-        this.createAxiosObservable(httpConfiguration)
-          .pipe(take(1))
-          .subscribe({
-            next: async (res) => {
-              this.handleNextAxiosSubscription(res, contract, receivedEvent);
-            },
-            error: async (error) => {
-              try {
-                const excDetail = await this.knexPool
-                  .table('contract_exc_detail')
-                  .insert({
-                    contract_id: contract.contract.id,
-                    received_event_id: receivedEvent[0],
-                    state: 'error',
-                  });
-                const errorResponse = {
-                  headers: error.response?.headers || {},
-                  body: error.response?.data || {},
-                  status: error.response?.status || error.code,
-                  statusText: error.response?.statusText || error.message,
-                  endTime: new Date().toISOString(),
-                  startTime: error.config.headers.eventhosStartDate,
-                };
-                const errorRequest = {
-                  headers: error.config.headers,
-                  body: error.config.data,
-                  url: error.config.url,
-                  params: error.config.params,
-                  method: error.config.method,
-                };
-                const encryptResultResponse = await this.encryptString(
-                  JSON.stringify(errorResponse),
-                );
-                const encryptResultRequest = await this.encryptString(
-                  JSON.stringify(errorRequest),
-                );
-                await this.knexPool.table('contract_exc_try').insert({
-                  contract_exc_detail_id: excDetail[0],
-                  state: 'error',
-                  request:
-                    encryptResultRequest.hexedInitVector +
-                    '|.|' +
-                    encryptResultRequest.encryptedData,
-                  response:
-                    encryptResultResponse.hexedInitVector +
-                    '|.|' +
-                    encryptResultResponse.encryptedData,
-                });
-              } catch (error) {
-                console.log(error);
-              }
-            },
-          });
+      for (const ocKey in orderedContracts) {
+        const contractsToExecute = orderedContracts[ocKey];
+        const contractExecutions = contractsToExecute.map((eventContract) => {
+          return defer(() =>
+            this.executeContract(eventContract, receivedEvent, parsedReq),
+          ).pipe(take(1));
+        });
+        const contractsExecution$ = merge(...contractExecutions);
+        mergedContractExecutions.push(contractsExecution$);
       }
+
+      concat(...mergedContractExecutions).subscribe((res) => {
+        this.handlePostContractExecution(res, getConfig().log());
+      });
 
       return res.status(200).json({ code: 20000, message: 'success' });
     } catch (error) {
@@ -432,7 +337,192 @@ class EventControllers {
     }
   };
 
-  handleNextAxiosSubscription = async (
+  handlePostContractExecution = (
+    res:
+      | {
+          message: string;
+          error?: undefined;
+        }
+      | {
+          message: string;
+          error: any;
+        },
+    logger: Logger,
+  ) => {
+    if (res.error) {
+      logger.error(res.message);
+      logger.error(res.error);
+      return;
+    }
+    logger.info(res.message);
+  };
+
+  generateOrderFromEventContracts = (eventContracts: EventContract[]) => {
+    const orders: Record<string, EventContract[]> = {};
+    for (const eventContract of eventContracts) {
+      const orderString = eventContract.contract.order;
+      if (orders[orderString] !== undefined) {
+        orders[orderString].push(eventContract);
+        continue;
+      }
+      orders[orderString] = [eventContract];
+    }
+    return orders;
+  };
+
+  executeContract = async (
+    eventContract: EventContract,
+    receivedEvent: number[],
+    parsedReq: {
+      headers: Record<any, any>;
+      body: any;
+      query: ParsedQs;
+      oauthResponse: {
+        headers: Record<string, string>;
+        body: Record<string, any>;
+      };
+    },
+  ) => {
+    try {
+      if (eventContract.action_security.type === 'oauth2_client') {
+        const jsonAxiosBaseAuthConfig = JSON.parse(
+          await this.decryptString(
+            eventContract.action_security.http_configuration,
+          ),
+        ) as AxiosRequestConfig;
+
+        const authResult = await axios({
+          ...jsonAxiosBaseAuthConfig,
+          timeout: getConfig().subscription.timeout,
+        });
+
+        parsedReq.oauthResponse = {
+          body: authResult.data,
+          headers: authResult.headers,
+        };
+      }
+
+      const jsonAxiosBaseConfig = JSON.parse(
+        await this.decryptString(eventContract.action.http_configuration),
+      ) as AxiosRequestConfig;
+
+      const parsedHeaders: Record<string, string> = {};
+      const parsedQueryParams: Record<string, string> = {};
+      let parsedBody: Record<string, any> = {};
+
+      for (const headerKey in jsonAxiosBaseConfig.headers) {
+        const header = jsonAxiosBaseConfig.headers[headerKey];
+        const parsedHeader = this.getVariables(header, 0, parsedReq, 'header');
+        parsedHeaders[headerKey] = parsedHeader;
+      }
+
+      for (const paramKey in jsonAxiosBaseConfig.params) {
+        const param = jsonAxiosBaseConfig.params[paramKey];
+        const parsedParam = this.getVariables(param, 0, parsedReq, 'param');
+        parsedQueryParams[paramKey] = parsedParam;
+      }
+
+      const fullParsedBody = {
+        ...this.parseBodyData(jsonAxiosBaseConfig.data, parsedReq),
+      };
+
+      if (JSON.stringify(jsonAxiosBaseConfig.data) === '{}') {
+        parsedBody = { ...parsedReq.body };
+      } else {
+        parsedBody = {
+          ...fullParsedBody,
+        };
+      }
+
+      const httpConfiguration: AxiosRequestConfig = {
+        url: jsonAxiosBaseConfig.url,
+        method: jsonAxiosBaseConfig.method,
+        headers: {
+          ...parsedHeaders,
+          eventhosStartDate: new Date().toISOString(),
+        },
+        params: { ...parsedQueryParams },
+        data: parsedBody,
+      };
+
+      const result = await axios({
+        ...httpConfiguration,
+        timeout: getConfig().subscription.timeout,
+      });
+
+      await this.handleContractExecution(result, eventContract, receivedEvent);
+
+      return {
+        message: `Contract with id ${eventContract.contract.id} executed successfully`,
+      };
+    } catch (error) {
+      if (error.isAxiosError) {
+        this.handleContractExecutionError(
+          error,
+          eventContract,
+          receivedEvent,
+        ).then(() => getConfig().log().info('Error saved'));
+      }
+      return {
+        message: `Error while executing contract with id ${eventContract.contract.id}`,
+        error: error,
+      };
+    }
+  };
+
+  handleContractExecutionError = async (
+    error: AxiosError,
+    eventContract: EventContract,
+    receivedEvent: number[],
+  ) => {
+    const logger = getConfig().log();
+    try {
+      const excDetail = await this.knexPool
+        .table('contract_exc_detail')
+        .insert({
+          contract_id: eventContract.contract.id,
+          received_event_id: receivedEvent[0],
+          state: 'error',
+        });
+      const errorResponse = {
+        headers: error.response?.headers || {},
+        body: error.response?.data || {},
+        status: error.response?.status || error.code,
+        statusText: error.response?.statusText || error.message,
+        endTime: new Date().toISOString(),
+        startTime: error.config.headers.eventhosStartDate,
+      };
+      const errorRequest = {
+        headers: error.config.headers,
+        body: error.config.data,
+        url: error.config.url,
+        params: error.config.params,
+        method: error.config.method,
+      };
+      const encryptResultResponse = await this.encryptString(
+        JSON.stringify(errorResponse),
+      );
+      const encryptResultRequest = await this.encryptString(
+        JSON.stringify(errorRequest),
+      );
+      await this.knexPool.table('contract_exc_try').insert({
+        contract_exc_detail_id: excDetail[0],
+        state: 'error',
+        request:
+          encryptResultRequest.hexedInitVector +
+          '|.|' +
+          encryptResultRequest.encryptedData,
+        response:
+          encryptResultResponse.hexedInitVector +
+          '|.|' +
+          encryptResultResponse.encryptedData,
+      });
+    } catch (error) {
+      logger.error(error);
+    }
+  };
+
+  handleContractExecution = async (
     res: AxiosResponse<any, any>,
     contract: {
       action: Action;
@@ -484,7 +574,7 @@ class EventControllers {
           encryptResultRequest.encryptedData,
       });
     } catch (error) {
-      console.log(error);
+      getConfig().log().error(error);
     }
   };
 
@@ -652,26 +742,10 @@ class EventControllers {
         );
       }
 
-      const totalReceivedEventCount = (await totalReceivedEventCountQuery)[0][
-        'count(*)'
-      ];
-
-      const totalPages = Math.ceil(
-        parseInt(totalReceivedEventCount as string) / itemsPerPage,
-      );
-
       const receivedEventsQuery = this.knexPool('received_event')
         .offset(offset)
         .limit(itemsPerPage)
         .orderBy('received_event.id', order);
-
-      if (systemId) {
-        const systemEvents = await this.knexPool('event')
-          .select('id')
-          .where('system_id', systemId as string);
-        const parsedSystemEvents = systemEvents.map((se) => se.id);
-        receivedEventsQuery.where('event_id', 'in', parsedSystemEvents);
-      }
 
       if (toTime) {
         const toTimeDate = new Date(toTime as string);
@@ -684,6 +758,22 @@ class EventControllers {
         fromTimeDate.setHours(0);
         receivedEventsQuery.where('received_at', '>', fromTimeDate);
       }
+
+      if (systemId) {
+        const systemEvents = await this.knexPool('event')
+          .select('id')
+          .where('system_id', systemId as string);
+        const parsedSystemEvents = systemEvents.map((se) => se.id);
+        receivedEventsQuery.where('event_id', 'in', parsedSystemEvents);
+      }
+
+      const totalReceivedEventCount = (await totalReceivedEventCountQuery)[0][
+        'count(*)'
+      ];
+
+      const totalPages = Math.ceil(
+        parseInt(totalReceivedEventCount as string) / itemsPerPage,
+      );
 
       const receivedEventsFullQuery = this.knexPool({
         received_event: receivedEventsQuery,
@@ -707,7 +797,8 @@ class EventControllers {
           'received_event.id',
         )
         .join('event', 'event.id', 'received_event.event_id')
-        .join('system', 'system.id', 'event.system_id');
+        .join('system', 'system.id', 'event.system_id')
+        .orderBy('received_event.id', order);
 
       const receivedEvents = await receivedEventsFullQuery;
 
@@ -904,16 +995,30 @@ class EventControllers {
 
   getEvents = async (req: Request, res: Response) => {
     try {
+      const { systemId, eventName } = req.query;
+
       const { itemsPerPage, offset, pageIndex, order, activeSort } =
         controllerHelpers.getPaginationData(req);
 
-      const totalEventsCount = (
-        await this.knexPool.table('event').count().where('deleted', false)
-      )[0]['count(*)'];
+      const totalEventsCountQuery = this.knexPool
+        .table('event')
+        .count()
+        .where('deleted', false);
 
-      const totalPages = Math.ceil(
-        parseInt(totalEventsCount as string) / itemsPerPage,
-      );
+      if (systemId) {
+        totalEventsCountQuery.andWhere(
+          'system_id',
+          parseInt(systemId as string),
+        );
+      }
+
+      if (eventName) {
+        totalEventsCountQuery.andWhere(
+          'name',
+          'like',
+          ('%' + eventName + '%') as string,
+        );
+      }
 
       const eventsQuery = this.knexPool
         .table('event')
@@ -921,6 +1026,20 @@ class EventControllers {
         .limit(itemsPerPage)
         .orderBy(activeSort, order)
         .where('deleted', false);
+
+      if (systemId) {
+        eventsQuery.andWhere('system_id', parseInt(systemId as string));
+      }
+
+      if (eventName) {
+        eventsQuery.andWhere('name', 'like', ('%' + eventName + '%') as string);
+      }
+
+      const totalEventsCount = (await totalEventsCountQuery)[0]['count(*)'];
+
+      const totalPages = Math.ceil(
+        parseInt(totalEventsCount as string) / itemsPerPage,
+      );
 
       const systems = (await eventsQuery) as Event[];
 
@@ -936,6 +1055,7 @@ class EventControllers {
         },
       });
     } catch (error) {
+      console.log('xxx2', error);
       this.returnError(error.message, res);
     }
   };
@@ -955,7 +1075,7 @@ class EventControllers {
   returnError = (error: any, res: Response) => {
     console.log('here is an error:', colors.red(error));
     if (error.sqlState) {
-      return res.status(500).json({
+      return res.status(501).json({
         code: 500001,
         message: `Data base error, with code ${error.sqlState}`,
       });

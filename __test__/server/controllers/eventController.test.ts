@@ -2,7 +2,7 @@ import { basicContent } from '../listRecivedEvents.mocked';
 import EventControllers from '../../../src/server/controllers/event.controller';
 import { Request, Response } from 'express';
 import knex, { Knex } from 'knex';
-import axios, { AxiosResponse } from 'axios';
+import axios, { AxiosError, AxiosResponse } from 'axios';
 import { firstValueFrom } from 'rxjs';
 import ReceivedEvent from '../../../src/server/dtos/RecivedEvent.dto';
 import bcrypt from 'bcrypt';
@@ -447,6 +447,7 @@ describe('Event routes work accordingly', () => {
         select: jest.fn().mockReturnThis(),
         join: jest.fn().mockReturnThis(),
         options: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockResolvedValue([]),
         table: jest.fn().mockReturnThis(),
@@ -481,6 +482,7 @@ describe('Event routes work accordingly', () => {
         mockResponse,
         mockNext,
       );
+      expect(mockedKnex.orderBy).toHaveBeenCalledWith('contract.order', 'asc');
       expect(mockedKnex.from).toHaveBeenCalledWith('contract');
       expect(mockedKnex.table).toHaveBeenCalledWith('received_event');
       expect(mockedKnex.select).toHaveBeenCalled();
@@ -508,6 +510,7 @@ describe('Event routes work accordingly', () => {
         from: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
         join: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
         options: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest
@@ -584,7 +587,11 @@ describe('Event routes work accordingly', () => {
 
       const mockReq = () => {
         const req: Request = {} as Request;
-        req.query = { itemsPerPage: '10', pageIndex: '1', order: 'desc' };
+        req.query = {
+          itemsPerPage: '10',
+          pageIndex: '1',
+          order: 'desc',
+        };
         req.headers = {};
         req.body = {};
         req.method = 'get';
@@ -600,16 +607,13 @@ describe('Event routes work accordingly', () => {
         const knex: Record<string, any> = {};
         knex.limit = jest.fn().mockReturnValue(knex);
         knex.offset = jest.fn().mockReturnValue(knex);
-        knex.orderBy = jest.fn();
+        knex.orderBy = jest.fn().mockReturnValue(receivedEvents);
         knex.select = jest.fn().mockReturnValue(knex);
         knex.where = jest.fn().mockReturnValue(knex);
         knex.table = jest.fn().mockReturnValue(knex);
         knex.leftJoin = jest.fn().mockReturnValue(knex);
         knex.count = jest.fn().mockResolvedValue([{ 'count(*)': 1 }]);
-        knex.join = jest.fn().mockImplementation((some) => {
-          knex.join = jest.fn().mockReturnValueOnce(receivedEvents);
-          return knex;
-        });
+        knex.join = jest.fn().mockReturnValue(knex);
         return knex;
       });
 
@@ -634,15 +638,6 @@ describe('Event routes work accordingly', () => {
     });
 
     it('List received events with filters', async () => {
-      const receivedEvents: ReceivedEvent[] = [
-        {
-          id: 1,
-          producer_event_id: 1,
-          header: { someHeader: 'some' },
-          received_at: new Date(),
-        },
-      ];
-
       const mockReq = () => {
         const req: Request = {} as Request;
         req.query = {
@@ -676,10 +671,7 @@ describe('Event routes work accordingly', () => {
         knex.table = jest.fn().mockReturnValue(knex);
         knex.leftJoin = jest.fn().mockReturnValue(knex);
         knex.count = jest.fn().mockReturnValue(knex);
-        knex.join = jest.fn().mockImplementation((some) => {
-          knex.join = jest.fn().mockReturnValueOnce(receivedEvents);
-          return knex;
-        });
+        knex.join = jest.fn().mockReturnValue(knex);
         return knex;
       });
 
@@ -688,7 +680,7 @@ describe('Event routes work accordingly', () => {
         encryptKey,
       );
       await eventControllers.listReceivedEvents(mockReq(), mockResponse);
-      expect(whereMock).toHaveBeenCalledTimes(3);
+      expect(whereMock).toHaveBeenCalledTimes(6);
     });
 
     it('List received events fails', async () => {
@@ -908,12 +900,73 @@ describe('Event routes work accordingly', () => {
           '{"headers": {"X": 1}, "params": {"X": 1}, "data": {}}',
         );
       await eventControllers.manageEvent(req, res);
-      expect(eventControllers.decryptString).toHaveBeenCalledTimes(2);
+      expect(eventControllers.decryptString).toHaveBeenCalledTimes(1);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         code: 20000,
         message: 'success',
       });
+    });
+
+    it('Generates order from event contracts', () => {
+      const knexMock = {};
+
+      const eventControllers = new EventControllers(
+        knexMock as any,
+        encryptKey,
+      );
+
+      const eventContracts = [
+        { contract: { order: 1 } },
+        { contract: { order: 1 } },
+        { contract: { order: 2 } },
+      ];
+
+      const order = eventControllers.generateOrderFromEventContracts(
+        eventContracts as any,
+      );
+
+      expect(order['1']).toBeTruthy();
+      expect(order['1'].length).toBe(2);
+      expect(order['2']).toBeTruthy();
+    });
+
+    it('Handle post contract execution when error', () => {
+      const knexMock = {};
+      const eventControllers = new EventControllers(
+        knexMock as any,
+        encryptKey,
+      );
+
+      const response = { message: 'error message', error: true };
+
+      const logger = {
+        error: jest.fn(),
+        info: jest.fn(),
+      };
+
+      eventControllers.handlePostContractExecution(response, logger as any);
+      expect(logger.error).toHaveBeenCalledTimes(2);
+      expect(logger.info).not.toHaveBeenCalled();
+    });
+
+    it('Handle post contract execution when success', () => {
+      const knexMock = {};
+      const eventControllers = new EventControllers(
+        knexMock as any,
+        encryptKey,
+      );
+
+      const response = { message: 'success message' };
+
+      const logger = {
+        error: jest.fn(),
+        info: jest.fn(),
+      };
+
+      eventControllers.handlePostContractExecution(response, logger as any);
+      expect(logger.info).toHaveBeenCalledTimes(1);
+      expect(logger.error).not.toHaveBeenCalled();
     });
 
     it('Manage event correct not correct locals', async () => {
@@ -1140,6 +1193,19 @@ describe('Event routes work accordingly', () => {
     });
   });
 
+  it('Error function', () => {
+    const knex = {} as any as Knex;
+    const res = mockRes();
+    const error = {
+      sqlState: 1,
+    };
+
+    const actionController = new EventControllers(knex, encryptKey);
+    actionController.returnError(error, res);
+
+    expect(res.status).toBeCalledWith(501);
+  });
+
   it('Handles decoded data', () => {
     const decode = {
       data: {
@@ -1261,6 +1327,35 @@ describe('Event routes work accordingly', () => {
     expect(knex.table).toHaveBeenCalledWith('event');
     expect(knex.offset).toHaveBeenCalledWith(0);
     expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('Gets Events with system id', async () => {
+    const req = {
+      query: {
+        itemsPerPage: 10,
+        offset: 10,
+        pageIndex: 0,
+        order: 'desc',
+        activeSort: 'id',
+        systemId: 1,
+        eventName: 'name',
+      },
+    } as any as Request;
+    const res = mockRes();
+    const knex = {
+      table: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      count: jest.fn().mockReturnThis(),
+      offset: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+    } as any as Knex;
+
+    const eventControllers = new EventControllers(knex, encryptKey);
+    await eventControllers.getEvents(req, res);
+
+    expect(knex.andWhere).toHaveBeenCalledTimes(4);
   });
 
   it('Gets Events fails', async () => {
@@ -1670,7 +1765,48 @@ describe('Event routes work accordingly', () => {
       insert: jest.fn().mockResolvedValue([1]),
     } as any as Knex;
     const eventController = new EventControllers(knexMock, encryptKey);
-    await eventController.handleNextAxiosSubscription(res, contract, [1]);
+    await eventController.handleContractExecution(res, contract, [1]);
+    expect(knexMock.table).toHaveBeenCalledWith('contract_exc_detail');
+    expect(knexMock.insert).toHaveBeenCalledTimes(2);
+  });
+
+  it('Handle axios error', async () => {
+    const error = {
+      response: {
+        headers: {
+          test: 1,
+        },
+        data: {
+          test: 1,
+        },
+        status: 200,
+        statusText: 'ok',
+      },
+      config: {
+        data: {
+          test: 1,
+        },
+        url: '/url',
+        params: {
+          test: 1,
+        },
+        method: 'get',
+        headers: {
+          eventhosStartDate: 'now',
+        },
+      },
+    } as any as AxiosError<any, any>;
+    const contract = {
+      contract: {
+        id: 1,
+      },
+    } as any;
+    const knexMock = {
+      table: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockResolvedValue([1]),
+    } as any as Knex;
+    const eventController = new EventControllers(knexMock, encryptKey);
+    await eventController.handleContractExecutionError(error, contract, [1]);
     expect(knexMock.table).toHaveBeenCalledWith('contract_exc_detail');
     expect(knexMock.insert).toHaveBeenCalledTimes(2);
   });

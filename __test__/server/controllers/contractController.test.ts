@@ -1,4 +1,5 @@
 import ContractController from '../../../src/server/controllers/contract.controller';
+import controllerHelpers from '../../../src/server/controllers/helpers/controller-helpers';
 import { Request, Response } from 'express';
 import { Knex } from 'knex';
 
@@ -9,6 +10,17 @@ const mockRes = () => {
   res.locals = {};
   return res;
 };
+
+describe('Controller helpers', () => {
+  it('Test get pagination data', () => {
+    const pagination = controllerHelpers.getPaginationData({
+      query: {
+        order: 'asc',
+      },
+    } as any);
+    expect(pagination.order).toBe('asc');
+  });
+});
 
 describe('Contract controller works', () => {
   it('Create a contract works', async () => {
@@ -95,8 +107,6 @@ describe('Contract controller works', () => {
 
     const knexFunction = jest.fn().mockReturnValue(knex);
 
-    const totalPages = Math.ceil(parseInt('8' as string) / 10);
-
     const contractController = new ContractController(knexFunction as any);
 
     await contractController.getContracts(req, res);
@@ -106,6 +116,7 @@ describe('Contract controller works', () => {
       'contract.id',
       'contract.name',
       'contract.active',
+      'contract.order',
       'event.id as eventId',
       'action.id as actionId',
       'producerSystem.name as producerName',
@@ -118,6 +129,49 @@ describe('Contract controller works', () => {
     expect(knex.limit).toHaveBeenCalledWith(10);
 
     expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalled();
+  });
+
+  it('Get contracts from events', async () => {
+    const req = {
+      params: {
+        eventId: 10,
+      },
+    } as any as Request;
+    const res = mockRes();
+
+    const knex = {
+      table: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockResolvedValue([{ id: 1 }]),
+    } as any as Knex;
+    const contractController = new ContractController(knex);
+
+    await contractController.getContractsFromEvent(req, res);
+
+    expect(knex.table).toHaveBeenCalledWith('contract');
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalled();
+  });
+
+  it('Edits contracts orders', async () => {
+    const req = {
+      body: {
+        orders: [{ contractId: 1, order: 1 }],
+      },
+    } as any as Request;
+    const res = mockRes();
+
+    const knex = {
+      table: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      where: jest.fn().mockResolvedValue([{ id: 1 }]),
+    } as any as Knex;
+    const contractController = new ContractController(knex);
+
+    await contractController.editContractOrders(req, res);
+    expect(knex.table).toHaveBeenCalledWith('contract');
+    expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalled();
   });
 
