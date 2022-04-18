@@ -13,7 +13,7 @@
     "poolMin": "${DATA_BASE_POOL_MIN}"
   },
   "subscription": {
-    "timeout": 50000
+    "timeout": 70000
   },
   "oauth2": {
     "jwtSecret": "${JWT_SECRET}"
