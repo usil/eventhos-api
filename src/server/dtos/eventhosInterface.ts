@@ -25,6 +25,7 @@ export interface Action {
 
 export interface Contract {
   id: number;
+  order: number;
   action_id: number;
   event_id: number;
   identifier: string;

@@ -76,7 +76,7 @@ class SystemController {
           });
         }
 
-        const insert = await this.knexPool.table('system').insert({
+        const systemInsert = await this.knexPool.table('system').insert({
           identifier,
           name,
           type,
@@ -88,7 +88,7 @@ class SystemController {
         return res.status(201).json({
           code: 20001,
           message: `New system created`,
-          content: { systemId: insert[0] },
+          content: { systemId: systemInsert[0] },
         });
       }
 

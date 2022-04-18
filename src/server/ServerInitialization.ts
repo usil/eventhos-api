@@ -99,7 +99,7 @@ class ServerInitialization
     this.app.use(morgan(':method :url'));
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
-    this.app.obGet('/', ':', (req: Request, res: Response) => {
+    this.app.obGet('/', ':', (_req: Request, res: Response) => {
       return res.status(200).send('Ok');
     });
   }
