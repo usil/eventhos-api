@@ -327,8 +327,8 @@ class EventControllers {
         mergedContractExecutions.push(contractsExecution$);
       }
 
-      concat(...mergedContractExecutions).subscribe((res) => {
-        this.handlePostContractExecution(res, getConfig().log());
+      concat(...mergedContractExecutions).subscribe((mergedRes) => {
+        this.handlePostContractExecution(mergedRes, getConfig().log());
       });
 
       return res.status(200).json({ code: 20000, message: 'success' });
@@ -517,8 +517,8 @@ class EventControllers {
           '|.|' +
           encryptResultResponse.encryptedData,
       });
-    } catch (error) {
-      logger.error(error);
+    } catch (lastError) {
+      logger.error(lastError);
     }
   };
 
@@ -802,8 +802,6 @@ class EventControllers {
 
       const receivedEvents = await receivedEventsFullQuery;
 
-      // console.log(receivedEvents);
-
       const joinedSearch = this.joinSearch(receivedEvents, 'id', 'state');
 
       return res.status(200).json({
@@ -896,15 +894,10 @@ class EventControllers {
   ) => {
     const newArray = [];
     for (let index = 0; index < baseSearch.length; index++) {
-      if (index === 0) {
-        for (const similarField of similarFields) {
-          const temporalFieldValue = baseSearch[index][similarField];
-          baseSearch[index][similarField] = [temporalFieldValue];
-        }
-        newArray.push(baseSearch[index]);
-      } else if (
+      if (
+        index === 0 ||
         baseSearch[index][differentiator] !==
-        baseSearch[index - 1][differentiator]
+          baseSearch[index - 1][differentiator]
       ) {
         for (const similarField of similarFields) {
           const temporalFieldValue = baseSearch[index][similarField];
@@ -1013,11 +1006,7 @@ class EventControllers {
       }
 
       if (eventName) {
-        totalEventsCountQuery.andWhere(
-          'name',
-          'like',
-          ('%' + eventName + '%') as string,
-        );
+        totalEventsCountQuery.andWhere('name', 'like', '%' + eventName + '%');
       }
 
       const eventsQuery = this.knexPool
@@ -1032,7 +1021,7 @@ class EventControllers {
       }
 
       if (eventName) {
-        eventsQuery.andWhere('name', 'like', ('%' + eventName + '%') as string);
+        eventsQuery.andWhere('name', 'like', '%' + eventName + '%');
       }
 
       const totalEventsCount = (await totalEventsCountQuery)[0]['count(*)'];
@@ -1055,7 +1044,6 @@ class EventControllers {
         },
       });
     } catch (error) {
-      console.log('xxx2', error);
       this.returnError(error.message, res);
     }
   };

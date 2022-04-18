@@ -104,18 +104,13 @@ class ActionControllers {
         method: 'post',
       };
 
-      switch (securityType) {
-        case 1:
-          securityHttpConfiguration['data'] = {
-            client_id: clientId,
-            client_secret: clientSecret,
-            grant_type: 'client_credentials',
-          };
-          parsedSecurity = 'oauth2_client';
-          break;
-        default:
-          parsedSecurity = 'custom';
-          break;
+      if (securityType === 1) {
+        securityHttpConfiguration['data'] = {
+          client_id: clientId,
+          client_secret: clientSecret,
+          grant_type: 'client_credentials',
+        };
+        parsedSecurity = 'oauth2_client';
       }
 
       const stringedSecurityHttpConfiguration = JSON.stringify(
@@ -370,18 +365,13 @@ class ActionControllers {
         method: 'post',
       };
 
-      switch (securityType) {
-        case 1:
-          securityHttpConfiguration['data'] = {
-            client_id: clientId,
-            client_secret: clientSecret,
-            grant_type: 'client_credentials',
-          };
-          parsedSecurity = 'oauth2_client';
-          break;
-        default:
-          parsedSecurity = 'custom';
-          break;
+      if (securityType === 1) {
+        securityHttpConfiguration['data'] = {
+          client_id: clientId,
+          client_secret: clientSecret,
+          grant_type: 'client_credentials',
+        };
+        parsedSecurity = 'oauth2_client';
       }
 
       const stringedSecurityHttpConfiguration = JSON.stringify(
