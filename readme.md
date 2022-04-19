@@ -59,20 +59,55 @@ Finally make someone use the `/event?access-key=<client-token>&event-identifier=
 
 To know more about `system`, `event` and `contract` take a look at the full [documentation](https://github.com/usil/eventhos-docs).
 
-## Environment
+## Environment variables
+
+| Variable                             | Description                                    | Default Value |
+| ------------------------------------ | ---------------------------------------------- | ------------- |
+| DATA_BASE_NAME                       | The eventhos platform database name            | eventhos      |
+| DATA_BASE_HOST                       | The eventhos platform database host            | localhost     |
+| DATA_BASE_PORT                       | The eventhos platform database port            | 3306          |
+| DATA_BASE_USER                       | The eventhos platform database user            | usr_eventhos  |
+| DATA_BASE_PASSWORD                   | The eventhos platform database password        | abcdefg       |
+| CPU_COUNT                            | How many cpu cores use                         | 1             |
+| PORT                                 | The application port                           | 2109          |
+| JWT_SECRET                           | The secret for the JWT creation                | secret        |
+| CRYPTO_KEY                           | The secret key to encrypt                      | secret_key    |
+| DATA_BASE_ACQUIRE_CONNECTION_TIMEOUT | The timeout to acquire a connection using knex | 10000         |
+| DATA_BASE_POOL_MIN                   | The minimum knex connection pool               | 100           |
+| DATA_BASE_POOL_MAX                   | The maximum knex connection pool               | 300           |
+| USE_QUEUE                            | Use the queue integration?                     | false         |
+| QUEUE_HOST                           | The host of the queue manager                  | localhost     |
+| QUEUE_PORT                           | The port of the queue manager                  | 61613         |
+| QUEUE_USER                           | A user to access the queue manager             | eventhos      |
+| QUEUE_PASSWORD                       | A user password to access the queue manager    | secret        |
+| QUEUE_DESTINATION                    | The queue destination                          | eventhos      |
 
 You should create an .env file with the following:
 
 ```text
 DATA_BASE_NAME = eventhos
-DATA_BASE_HOST = <your-ip>
+DATA_BASE_HOST = localhost
 DATA_BASE_PORT = 3306
-DATA_BASE_USER = root
+DATA_BASE_USER = usr_eventhos
 DATA_BASE_PASSWORD = abcdefg
-PORT = 1000
-CPU_COUNT = <number of CPUs to use>
-JWT_SECRET = supersecret
-CRYPTO_KEY = supersecret
+CPU_COUNT = 1
+PORT = 2109
+JWT_SECRET = secret
+CRYPTO_KEY = secret_key
+DATA_BASE_ACQUIRE_CONNECTION_TIMEOUT = 10000
+DATA_BASE_POOL_MIN = 100
+DATA_BASE_POOL_MAX = 300
+```
+
+Only add the following if you want to use the queue integration:
+
+```text
+USE_QUEUE = true
+QUEUE_HOST = localhost
+QUEUE_PORT = 61613
+QUEUE_USER = eventhos
+QUEUE_PASSWORD = secret
+QUEUE_DESTINATION = eventhos
 ```
 
 ## License
@@ -97,3 +132,4 @@ CRYPTO_KEY = supersecret
     </td>
   </tbody>
 </table>
+```
