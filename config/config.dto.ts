@@ -7,6 +7,14 @@ export class ConfigGlobalDto {
   state: string;
   port: number;
   cpuCount: number;
+  queue: {
+    active: boolean;
+    host: string;
+    port: number;
+    user: string;
+    password: string;
+    destination: string;
+  };
   dataBase: {
     name: string;
     host: string;
