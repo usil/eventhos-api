@@ -4,7 +4,7 @@
   "description": "A template to use knex with mysql",
   "main": "./dist/main.js",
   "scripts": {
-    "test": "cross-env NODE_ENV=test jest  --verbose --collectCoverage --silent  && jest-coverage-badges --output badges",
+    "test": "cross-env USE_QUEUE=false NODE_ENV=test jest --silent --verbose --collectCoverage  && jest-coverage-badges --output badges",
     "test:watch": "npm test -- --watch",
     "build": "cross-env NODE_ENV=production webpack --config webpack.prod.js",
     "start": "cross-env NODE_ENV=production node --max-old-space-size=1192 ./dist/main.js | bunyan",
@@ -32,6 +32,7 @@
     "mysql2": "^2.3.3",
     "nodeboot-oauth2-starter": "git+https://github.com/usil/nodeboot-oauth2-starter.git",
     "rxjs": "^7.4.0",
+    "stompit": "^1.0.0",
     "throng": "^5.0.0",
     "tslib": "^2.3.1"
   },
@@ -47,6 +48,7 @@
     "@types/jsonwebtoken": "^8.5.8",
     "@types/mock-knex": "^0.4.3",
     "@types/morgan": "^1.9.3",
+    "@types/stompit": "^0.26.3",
     "@types/supertest": "^2.0.11",
     "@types/throng": "^5.0.3",
     "@typescript-eslint/eslint-plugin": "^5.3.1",

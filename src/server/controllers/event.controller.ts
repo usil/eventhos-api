@@ -18,7 +18,22 @@ import { ParsedQs } from 'qs';
 import controllerHelpers from './helpers/controller-helpers';
 import util from 'util';
 import Logger from 'bunyan';
+import { Client } from 'stompit';
+import { ConfigGlobalDto } from '../../../config/config.dto';
 
+interface ContractsExecutionBody {
+  orderedContracts: Record<string, EventContract[]>;
+  receivedEvent: number[];
+  parsedReq: {
+    headers: Record<any, any>;
+    body: any;
+    query: ParsedQs;
+    oauthResponse: {
+      headers: Record<string, string>;
+      body: Record<string, any>;
+    };
+  };
+}
 interface EventContract {
   action: Action;
   event: Event;
@@ -29,10 +44,75 @@ class EventControllers {
   knexPool: Knex;
   scryptPromise = util.promisify(crypto.scrypt);
   encryptionKey: Buffer;
-  constructor(knexPool: Knex, encryptionKey: Buffer) {
+  queueClient: Client;
+
+  constructor(knexPool: Knex, encryptionKey: Buffer, queueClient?: Client) {
     this.knexPool = knexPool;
     this.encryptionKey = encryptionKey;
+    if (queueClient) {
+      this.queueClient = queueClient;
+      this.subscribeToQueue(this.queueClient, getConfig());
+    }
   }
+
+  subscribeToQueue(client: Client, configuration: Partial<ConfigGlobalDto>) {
+    const subscribeHeaders = {
+      destination: `/queue/${configuration.queue.destination}`,
+      ack: 'client-individual',
+    };
+
+    return client.subscribe(subscribeHeaders, (err, message) => {
+      this.clientSubscriptionHandler(err, message, configuration, client);
+    });
+  }
+
+  clientSubscriptionHandler(
+    err: Error,
+    message: Client.Message,
+    configuration: Partial<ConfigGlobalDto>,
+    client: Client,
+  ) {
+    if (err) {
+      configuration.log().error(`subscribe error ${err.message}`);
+      return;
+    }
+
+    message.readString('utf-8', (messageError, rawMessage) => {
+      this.handleMessageReading(
+        messageError,
+        rawMessage,
+        configuration,
+        client,
+        message,
+      );
+    });
+  }
+
+  handleMessageReading(
+    messageError: Error,
+    rawMessage: string,
+    configuration: Partial<ConfigGlobalDto>,
+    client: Client,
+    message: Client.Message,
+  ) {
+    if (messageError) {
+      configuration.log().error('read message error ' + messageError.message);
+      return;
+    }
+
+    configuration.log().info('received message: ' + rawMessage);
+
+    const parsedMessage = JSON.parse(rawMessage) as ContractsExecutionBody;
+
+    this.executeMultipleContracts(
+      parsedMessage.orderedContracts,
+      parsedMessage.receivedEvent,
+      parsedMessage.parsedReq,
+    );
+
+    client.ack(message);
+  }
+
   /**
    *
    * @describe Validates the recived event
@@ -302,39 +382,82 @@ class EventControllers {
         },
       };
 
-      const mergedContractExecutions: Observable<
-        | {
-            message: string;
-            error?: undefined;
-          }
-        | {
-            message: string;
-            error: any;
-          }
-      >[] = [];
-
       const orderedContracts =
         this.generateOrderFromEventContracts(eventContracts);
 
-      for (const ocKey in orderedContracts) {
-        const contractsToExecute = orderedContracts[ocKey];
-        const contractExecutions = contractsToExecute.map((eventContract) => {
-          return defer(() =>
-            this.executeContract(eventContract, receivedEvent, parsedReq),
-          ).pipe(take(1));
-        });
-        const contractsExecution$ = merge(...contractExecutions);
-        mergedContractExecutions.push(contractsExecution$);
+      // * Start of rxjs contracts execution
+
+      if (this.queueClient === undefined) {
+        this.executeMultipleContracts(
+          orderedContracts,
+          receivedEvent,
+          parsedReq,
+        );
+      } else {
+        const sendHeaders = {
+          destination: `/queue/${getConfig().queue.destination}`,
+          'content-type': 'text/plain',
+        };
+
+        const messageToSend = {
+          orderedContracts,
+          receivedEvent,
+          parsedReq,
+        };
+
+        const stringMessage = JSON.stringify(messageToSend);
+
+        const frame = this.queueClient.send(sendHeaders);
+        frame.write(stringMessage);
+        frame.end();
       }
 
-      concat(...mergedContractExecutions).subscribe((mergedRes) => {
-        this.handlePostContractExecution(mergedRes, getConfig().log());
-      });
+      // * End of rxjs contracts execution
 
       return res.status(200).json({ code: 20000, message: 'success' });
     } catch (error) {
       this.returnError(error, res);
     }
+  };
+
+  executeMultipleContracts = (
+    orderedContracts: Record<string, EventContract[]>,
+    receivedEvent: number[],
+    parsedReq: {
+      headers: Record<any, any>;
+      body: any;
+      query: ParsedQs;
+      oauthResponse: {
+        headers: Record<string, string>;
+        body: Record<string, any>;
+      };
+    },
+  ) => {
+    const mergedContractExecutions: Observable<
+      | {
+          message: string;
+          error?: undefined;
+        }
+      | {
+          message: string;
+          error: any;
+        }
+    >[] = [];
+
+    for (const ocKey in orderedContracts) {
+      const contractsToExecute = orderedContracts[ocKey];
+      const contractExecutions = contractsToExecute.map((eventContract) => {
+        return defer(() =>
+          this.executeContract(eventContract, receivedEvent, parsedReq),
+        ).pipe(take(1));
+      });
+      const contractsExecution$ = merge(...contractExecutions);
+      mergedContractExecutions.push(contractsExecution$);
+    }
+
+    concat(...mergedContractExecutions).subscribe((mergedRes) => {
+      this.handlePostContractExecution(mergedRes, getConfig().log());
+    });
   };
 
   handlePostContractExecution = (

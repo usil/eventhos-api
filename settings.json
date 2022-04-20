@@ -20,5 +20,15 @@
   },
   "encryption": {
     "key": "${CRYPTO_KEY}"
+  },
+  "queue": {
+    "active": "${USE_QUEUE}",
+    "host": "${QUEUE_HOST}",
+    "headersHost": "${QUEUE_HEADERS_HOST}",
+    "port": "${QUEUE_PORT}",
+    "user": "${QUEUE_USER}",
+    "password": "${QUEUE_PASSWORD}",
+    "destination": "${QUEUE_DESTINATION}",
+    "heartBeat": "${QUEUE_HEART_BEAT}"
   }
 }

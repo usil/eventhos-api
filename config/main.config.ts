@@ -27,11 +27,18 @@ export const getConfig = () => {
 
   configuration = settings;
 
+  configuration.queue.active =
+    settings.queue.active === true || settings.queue.active === 'true'
+      ? true
+      : false;
+
   const parsedPort = parseInt(settings.port);
 
   configuration.port = isNaN(parsedPort) ? 2109 : parsedPort;
 
   configuration.dataBase.port = parseInt(settings.dataBase.port);
+
+  configuration.queue.port = parseInt(settings.queue.port);
 
   configuration.dataBase.acquireConnectionTimeout = parseInt(
     settings.dataBase.acquireConnectionTimeout,

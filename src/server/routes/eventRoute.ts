@@ -1,4 +1,5 @@
 import { Knex } from 'knex';
+import { Client } from 'stompit';
 import EventControllers from '../controllers/event.controller';
 import Route from '../util/Route';
 
@@ -9,12 +10,17 @@ export const createRouteEvent = (
   knexPool: Knex,
   oauthBoot: any,
   encryptionKey: Buffer,
+  queueClient?: Client,
 ): Route => {
   const routeName = '/event';
 
   const eventRoute = new Route(routeName);
 
-  const controllers = new EventControllers(knexPool, encryptionKey);
+  const controllers = new EventControllers(
+    knexPool,
+    encryptionKey,
+    queueClient,
+  );
 
   const authRouter = oauthBoot.bootOauthExpressRouter(
     eventRoute.router,
