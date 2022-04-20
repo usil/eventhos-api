@@ -62,32 +62,55 @@ class EventControllers {
     };
 
     return client.subscribe(subscribeHeaders, (err, message) => {
-      if (err) {
-        configuration.log().error(`subscribe error ${err.message}`);
-        return;
-      }
-
-      message.readString('utf-8', (messageError, rawMessage) => {
-        if (messageError) {
-          configuration
-            .log()
-            .info('read message error ' + messageError.message);
-          return;
-        }
-
-        configuration.log().info('received message: ' + rawMessage);
-
-        const parsedMessage = JSON.parse(rawMessage) as ContractsExecutionBody;
-
-        this.executeMultipleContracts(
-          parsedMessage.orderedContracts,
-          parsedMessage.receivedEvent,
-          parsedMessage.parsedReq,
-        );
-
-        client.ack(message);
-      });
+      this.clientSubscriptionHandler(err, message, configuration, client);
     });
+  }
+
+  clientSubscriptionHandler(
+    err: Error,
+    message: Client.Message,
+    configuration: Partial<ConfigGlobalDto>,
+    client: Client,
+  ) {
+    if (err) {
+      configuration.log().error(`subscribe error ${err.message}`);
+      return;
+    }
+
+    message.readString('utf-8', (messageError, rawMessage) => {
+      this.handleMessageReading(
+        messageError,
+        rawMessage,
+        configuration,
+        client,
+        message,
+      );
+    });
+  }
+
+  handleMessageReading(
+    messageError: Error,
+    rawMessage: string,
+    configuration: Partial<ConfigGlobalDto>,
+    client: Client,
+    message: Client.Message,
+  ) {
+    if (messageError) {
+      configuration.log().error('read message error ' + messageError.message);
+      return;
+    }
+
+    configuration.log().info('received message: ' + rawMessage);
+
+    const parsedMessage = JSON.parse(rawMessage) as ContractsExecutionBody;
+
+    this.executeMultipleContracts(
+      parsedMessage.orderedContracts,
+      parsedMessage.receivedEvent,
+      parsedMessage.parsedReq,
+    );
+
+    client.ack(message);
   }
 
   /**
@@ -371,6 +394,7 @@ class EventControllers {
           parsedReq,
         );
       } else {
+        console.log('herex');
         const sendHeaders = {
           destination: `/queue/${getConfig().queue.destination}`,
           'content-type': 'text/plain',
@@ -384,9 +408,13 @@ class EventControllers {
 
         const stringMessage = JSON.stringify(messageToSend);
 
+        console.log('herex2');
+
         const frame = this.queueClient.send(sendHeaders);
         frame.write(stringMessage);
         frame.end();
+
+        console.log('herex3');
       }
 
       // * End of rxjs contracts execution

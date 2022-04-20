@@ -741,6 +741,61 @@ describe('Actions controller functions work', () => {
     expect(actionController.decryptString).toHaveBeenLastCalledWith('|.|');
   });
 
+  it('Get action works deleted', async () => {
+    const req = {
+      params: {
+        id: 1,
+      },
+    } as any as Request;
+    const res = mockRes();
+    const knex = {
+      table: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      join: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnValue([
+        {
+          securityType: 'custom',
+          httpConfiguration: '|.|',
+          deleted: 0,
+          id: 1,
+          description: 'desc',
+        },
+      ]),
+    } as any as Knex;
+
+    const actionController = new ActionController(knex);
+    actionController.decryptString = jest
+      .fn()
+      .mockReturnValue('{"decrypted": 1}');
+
+    await actionController.getAction(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      code: 200000,
+      message: 'success',
+      content: {
+        created_at: undefined,
+        deleted: false,
+        description: 'desc',
+        httpConfiguration: {
+          decrypted: 1,
+        },
+        id: 1,
+        identifier: undefined,
+        name: undefined,
+        operation: undefined,
+        security: {
+          httpConfiguration: {},
+          type: 'custom',
+        },
+        updated_at: undefined,
+      },
+    });
+    expect(actionController.decryptString).toHaveBeenLastCalledWith('|.|');
+  });
+
   it('Get action works, oauth2', async () => {
     const req = {
       params: {

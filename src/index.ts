@@ -1,4 +1,3 @@
-// import throng from 'throng';
 import { getConfig } from '../config/main.config';
 import { newServer } from './server/createServer';
 import cluster from 'cluster';
@@ -14,11 +13,11 @@ if (totalCPUs < configuration.cpuCount) {
 
 const start = async () => {
   const port = configuration.port;
-  // const maxHeapSz = v8.getHeapStatistics().heap_size_limit;
-  // const maxHeapSz_GB = (maxHeapSz / 1024 ** 3).toFixed(1);
-  // console.log(`${maxHeapSz_GB}GB`);
-  // configuration.log().info(`Id Worker ${id}`);
-  const serverApp = await newServer(port || 1000);
+  // ? const maxHeapSz = v8.getHeapStatistics().heap_size_limit;
+  // ? const maxHeapSz_GB = (maxHeapSz / 1024 ** 3).toFixed(1);
+  // ? console.log(`${maxHeapSz_GB}GB`);
+  // ? configuration.log().info(`Id Worker ${id}`);
+  const serverApp = await newServer(port || 1000, configuration);
   const server = serverApp.server;
 
   server.on('listening', () => {
@@ -37,7 +36,7 @@ if (cluster.isMaster) {
       .fork()
       .on('listening', () => configuration.log().info(`Cluster #${i} created`));
   }
-  cluster.on('exit', (worker, code, signal) => {
+  cluster.on('exit', (worker, _code, _signal) => {
     configuration.log().warn(`worker ${worker.process.pid} died`);
     configuration.log().info('Trying to fork another');
     cluster.fork();

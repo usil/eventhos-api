@@ -10,6 +10,8 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import util from 'util';
 
+const scryptPromise = util.promisify(crypto.scrypt);
+
 jest.mock('axios', () => jest.fn().mockReturnValue({ data: 1, headers: 1 }));
 jest.mock('knex', () => {
   const mKnex = {
@@ -53,7 +55,6 @@ jest.mock('knex', () => {
   return jest.fn(() => mKnex);
 });
 describe('Event routes work accordingly', () => {
-  const scryptPromise = util.promisify(crypto.scrypt);
   let encryptKey: Buffer;
 
   beforeAll(async () => {
@@ -1193,6 +1194,82 @@ describe('Event routes work accordingly', () => {
     });
   });
 
+  it('Handle message reading no error', () => {
+    const eventControllers = new EventControllers({} as any, encryptKey);
+    eventControllers.executeMultipleContracts = jest.fn();
+
+    const message = {
+      mock: 1,
+    };
+
+    const mockRawMessage = JSON.stringify(message);
+
+    const logMock = {
+      info: jest.fn(),
+    };
+
+    const configuration = {
+      log: jest.fn().mockReturnValue(logMock),
+    };
+
+    const client = {
+      ack: jest.fn(),
+    } as any;
+
+    const messageObj = { mock: 1 } as any;
+
+    eventControllers.handleMessageReading(
+      null,
+      mockRawMessage,
+      configuration,
+      client,
+      messageObj,
+    );
+
+    expect(configuration.log).toHaveBeenCalled();
+    expect(logMock.info).toHaveBeenCalledWith(
+      'received message: ' + mockRawMessage,
+    );
+
+    expect(eventControllers.executeMultipleContracts).toHaveBeenCalled();
+    expect(client.ack).toHaveBeenCalledWith(messageObj);
+  });
+
+  it('Handle message reading with error', () => {
+    const eventControllers = new EventControllers({} as any, encryptKey);
+    eventControllers.executeMultipleContracts = jest.fn();
+
+    const message = {
+      mock: 1,
+    };
+
+    const mockRawMessage = JSON.stringify(message);
+
+    const logMock = {
+      error: jest.fn(),
+    };
+
+    const configuration = {
+      log: jest.fn().mockReturnValue(logMock),
+    };
+
+    const client = {
+      ack: jest.fn(),
+    } as any;
+
+    const messageObj = { mock: 1 } as any;
+
+    eventControllers.handleMessageReading(
+      { message: 'error' } as any,
+      mockRawMessage,
+      configuration,
+      client,
+      messageObj,
+    );
+
+    expect(logMock.error).toHaveBeenCalledWith('read message error ' + 'error');
+  });
+
   it('Error function', () => {
     const knex = {} as any as Knex;
     const res = mockRes();
@@ -1229,6 +1306,83 @@ describe('Event routes work accordingly', () => {
     const eventControllers = new EventControllers({} as Knex, encryptKey);
     eventControllers.handleDecodeData(decode, client, res, nextFunction, event);
     expect(nextFunction).toHaveBeenCalled();
+  });
+
+  it('Handle client subscription no error', () => {
+    const eventControllers = new EventControllers({} as any, encryptKey);
+    eventControllers.handleMessageReading = jest.fn();
+    const message = {
+      readString: jest.fn(),
+    } as any;
+
+    const logMock = {
+      info: jest.fn(),
+    };
+
+    const configuration = {
+      log: jest.fn().mockReturnValue(logMock),
+    };
+
+    const client = {
+      ack: jest.fn(),
+    } as any;
+
+    eventControllers.clientSubscriptionHandler(
+      null,
+      message,
+      configuration,
+      client,
+    );
+
+    expect(message.readString).toHaveBeenCalled();
+  });
+
+  it('Handle client subscription with error', () => {
+    const eventControllers = new EventControllers({} as any, encryptKey);
+    eventControllers.handleMessageReading = jest.fn();
+    const message = {
+      readString: jest.fn(),
+    } as any;
+
+    const logMock = {
+      error: jest.fn(),
+    };
+
+    const configuration = {
+      log: jest.fn().mockReturnValue(logMock),
+    };
+
+    const client = {
+      ack: jest.fn(),
+    } as any;
+
+    eventControllers.clientSubscriptionHandler(
+      { message: 'error' } as any,
+      message,
+      configuration,
+      client,
+    );
+
+    expect(logMock.error).toHaveBeenCalledWith('subscribe error error');
+  });
+
+  it('Subscribe to queue works', () => {
+    const eventControllers = new EventControllers({} as any, encryptKey);
+    eventControllers.clientSubscriptionHandler = jest.fn();
+
+    const client = {
+      subscribe: jest.fn(),
+    } as any;
+
+    const configuration = {
+      queue: {
+        destination: 'destiny',
+      },
+    };
+
+    eventControllers.subscribeToQueue(client, configuration as any);
+
+    expect(client.subscribe).toHaveBeenCalled();
   });
 
   it('Handles decoded data, incorrect token', () => {
@@ -1413,6 +1567,133 @@ describe('Event routes work accordingly', () => {
     expect(res.json).toHaveBeenCalledWith({
       code: 200001,
       message: 'success',
+    });
+  });
+
+  describe('Event routes work accordingly event with queue', () => {
+    it('Constructor queue works', () => {
+      const spy = jest
+        .spyOn(EventControllers.prototype, 'subscribeToQueue')
+        .mockImplementation(() => {
+          return true as any;
+        });
+
+      const eventController = new EventControllers(
+        {} as Knex,
+        0 as any,
+        {
+          mock: true,
+        } as any,
+      );
+      expect(eventController.subscribeToQueue).toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it('Manage event correct', async () => {
+      const spy = jest
+        .spyOn(EventControllers.prototype, 'subscribeToQueue')
+        .mockImplementation(() => {
+          return true as any;
+        });
+
+      const mockRes = () => {
+        const res = {} as Response;
+        res.locals = {
+          eventId: 1,
+          eventContracts: [
+            {
+              action: {
+                id: 1,
+                system_id: 1,
+                identifier: 'identifier',
+                name: 'name',
+                http_configuration: `x|.|x`,
+                operation: 'select',
+                description: 'description',
+                deleted: 1,
+                created_at: new Date(),
+                updated_at: new Date(),
+              },
+              event: {
+                id: 1,
+                system_id: 1,
+                identifier: 'identifier',
+                name: 'name',
+                operation: 'select',
+                description: 'description',
+                deleted: 0,
+                created_at: new Date(),
+                updated_at: new Date(),
+              },
+              contract: {
+                id: 1,
+                action_id: 1,
+                event_id: 1,
+                identifier: 'ident',
+                name: 'name',
+                active: 1,
+                deleted: 0,
+                created_at: new Date(),
+                updated_at: new Date(),
+              },
+              action_security: {
+                id: 1,
+                action_id: 1,
+                type: 'select',
+                http_configuration: { url: 'http' },
+                json_path_exp: 'exp',
+                updated_at: new Date(),
+              },
+            },
+          ],
+        };
+        res.json = jest.fn();
+        res.status = jest.fn().mockReturnThis();
+        return res;
+      };
+      const res = mockRes();
+
+      const frame = {
+        write: jest.fn(),
+        end: jest.fn(),
+      };
+
+      const client = {
+        send: jest.fn().mockReturnValue(frame),
+      };
+
+      const req = {
+        body: { bod: 'x' },
+        headers: { auth: 'x' },
+        query: {},
+        method: 'get',
+        protocol: 'https',
+        get: jest.fn().mockReturnValue('host'),
+        originalUrl: 'original.www',
+      } as any as Request;
+
+      const knexMock = {
+        table: jest.fn().mockReturnThis(),
+        insert: jest.fn().mockResolvedValue([1]),
+      };
+      const eventControllers = new EventControllers(
+        knexMock as any,
+        encryptKey,
+        client as any,
+      );
+      eventControllers.getVariables = jest.fn().mockReturnValue('goodDATA');
+      eventControllers.decryptString = jest
+        .fn()
+        .mockReturnValue(
+          '{"headers": {"X": 1}, "params": {"X": 1}, "data": {"X": 1}}',
+        );
+      await eventControllers.manageEvent(req, res);
+
+      expect(client.send).toHaveBeenCalled();
+      expect(frame.end).toHaveBeenCalled();
+      expect(frame.write).toHaveBeenCalled();
+
+      spy.mockRestore();
     });
   });
 

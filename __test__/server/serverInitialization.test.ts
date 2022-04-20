@@ -18,6 +18,7 @@ describe('Create an express app and an http server', () => {
     jest.spyOn(ServerInitialization.prototype, 'addRoutes');
     jest.spyOn(ServerInitialization.prototype, 'createServer');
     jest.spyOn(ServerInitialization.prototype, 'addKnexjsConfig');
+    jest.spyOn(ServerInitialization.prototype, 'healthEndpoint');
     serverInitialization = new ServerInitialization(testPort);
     const routeTest = new Route('/test');
     routeTest.router.get('/', (req, res) => {
@@ -33,6 +34,16 @@ describe('Create an express app and an http server', () => {
 
   it('The server is correct', () => {
     expect(server).toBeInstanceOf(http.Server);
+  });
+
+  it('Heath endpoint works', () => {
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      send: jest.fn(),
+    };
+    serverInitialization.healthEndpoint({} as any, res as any);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.send).toHaveBeenCalledWith('Ok');
   });
 
   it('The app executes all of the necessary functions', () => {

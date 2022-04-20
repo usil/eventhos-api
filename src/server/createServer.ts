@@ -5,14 +5,16 @@ import { createRouteSystem } from './routes/systemRoutes';
 import { createRouteAction } from './routes/actionRoutes';
 import util from 'util';
 import crypto from 'crypto';
-import { getConfig } from '../../config/main.config';
 import queueHelpers from './controllers/helpers/QueueHelpers';
 import { Client } from 'stompit';
+import { ConfigGlobalDto } from '../../config/config.dto';
 /**
  * @description Creates the server
  */
-export const newServer = async (port: number) => {
-  const configuration = getConfig();
+export const newServer = async (
+  port: number,
+  configuration: Partial<ConfigGlobalDto>,
+) => {
   const scryptPromise = util.promisify(crypto.scrypt);
 
   const serverInit = new ServerInitialization(port);
