@@ -38,7 +38,7 @@ export const newServer = async (
       host: configuration.queue.host,
       port: configuration.queue.port,
       connectHeaders: {
-        host: '/',
+        host: configuration.queue.headersHost,
         login: configuration.queue.user,
         passcode: configuration.queue.password,
         'heart-beat': configuration.queue.heartBeat,

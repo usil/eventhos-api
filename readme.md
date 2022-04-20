@@ -82,6 +82,7 @@ To know more about `system`, `event` and `contract` take a look at the full [doc
 | QUEUE_PASSWORD                       | A user password to access the queue manager    | secret        |
 | QUEUE_DESTINATION                    | The queue destination                          | eventhos      |
 | QUEUE_HEART_BEAT                     | The hearth beat for the queue manager          | 0,0           |
+| QUEUE_HEADERS_HOST                   | The host to send in the headers                | /             |
 
 You should create an .env file with the following:
 
@@ -105,6 +106,7 @@ Only add the following if you want to use the queue integration:
 ```text
 USE_QUEUE = true
 QUEUE_HOST = localhost
+QUEUE_HEADERS_HOST = /
 QUEUE_PORT = 61613
 QUEUE_USER = eventhos
 QUEUE_PASSWORD = secret

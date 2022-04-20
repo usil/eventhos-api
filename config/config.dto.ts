@@ -10,6 +10,7 @@ export class ConfigGlobalDto {
   queue: {
     active: boolean;
     host: string;
+    headersHost: string;
     port: number;
     user: string;
     password: string;
