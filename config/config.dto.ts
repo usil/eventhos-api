@@ -14,6 +14,7 @@ export class ConfigGlobalDto {
     user: string;
     password: string;
     destination: string;
+    heartBeat: string;
   };
   dataBase: {
     name: string;

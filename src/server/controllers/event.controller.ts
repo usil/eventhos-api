@@ -394,7 +394,6 @@ class EventControllers {
           parsedReq,
         );
       } else {
-        console.log('herex');
         const sendHeaders = {
           destination: `/queue/${getConfig().queue.destination}`,
           'content-type': 'text/plain',
@@ -408,13 +407,9 @@ class EventControllers {
 
         const stringMessage = JSON.stringify(messageToSend);
 
-        console.log('herex2');
-
         const frame = this.queueClient.send(sendHeaders);
         frame.write(stringMessage);
         frame.end();
-
-        console.log('herex3');
       }
 
       // * End of rxjs contracts execution

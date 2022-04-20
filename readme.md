@@ -81,6 +81,7 @@ To know more about `system`, `event` and `contract` take a look at the full [doc
 | QUEUE_USER                           | A user to access the queue manager             | eventhos      |
 | QUEUE_PASSWORD                       | A user password to access the queue manager    | secret        |
 | QUEUE_DESTINATION                    | The queue destination                          | eventhos      |
+| QUEUE_HEART_BEAT                     | The hearth beat for the queue manager          | 0,0           |
 
 You should create an .env file with the following:
 
@@ -108,6 +109,7 @@ QUEUE_PORT = 61613
 QUEUE_USER = eventhos
 QUEUE_PASSWORD = secret
 QUEUE_DESTINATION = eventhos
+QUEUE_HEART_BEAT = 0,0
 ```
 
 ## License

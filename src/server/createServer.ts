@@ -41,7 +41,7 @@ export const newServer = async (
         host: '/',
         login: configuration.queue.user,
         passcode: configuration.queue.password,
-        'heart-beat': '5000,5000',
+        'heart-beat': configuration.queue.heartBeat,
       },
     });
 
