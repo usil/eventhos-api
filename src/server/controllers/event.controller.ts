@@ -514,6 +514,10 @@ class EventControllers {
           ),
         ) as AxiosRequestConfig;
 
+        jsonAxiosBaseAuthConfig.headers = {
+          ...jsonAxiosBaseAuthConfig.headers,
+          eventhosStartDate: new Date().toISOString(),
+        };
         const authResult = await axios({
           ...jsonAxiosBaseAuthConfig,
           timeout: getConfig().subscription.timeout,
