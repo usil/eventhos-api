@@ -30,7 +30,7 @@
     "knex": "^0.95.14",
     "morgan": "^1.10.0",
     "mysql2": "^2.3.3",
-    "nodeboot-oauth2-starter": "git+https://github.com/usil/nodeboot-oauth2-starter.git",
+    "nodeboot-oauth2-starter": "git+https://github.com/usil/nodeboot-oauth2-starter.git#fix-validator-middleware",
     "rxjs": "^7.4.0",
     "stompit": "^1.0.0",
     "throng": "^5.0.0",
