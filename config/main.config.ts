@@ -10,7 +10,7 @@ import log4js from 'log4js';
 const logAppenders = {
   logFile: {
     type: 'dateFile',
-    filename: `logs.log`,
+    filename: process.env.LOG_FILE_PATH || `logs.log`,
   },
   log: { type: 'console' },
 };
@@ -23,7 +23,7 @@ log4js.configure({
       level: 'debug',
     },
     eventhos: {
-      appenders: process.env.USE_FILE === 'true' ? ['logFile', 'log'] : ['log'],
+      appenders: process.env.LOG_FILE_PATH ? ['logFile', 'log'] : ['log'],
       level: process.env.LOG_LEVEL || 'debug',
     },
   },
