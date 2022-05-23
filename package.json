@@ -4,11 +4,11 @@
   "description": "A template to use knex with mysql",
   "main": "./dist/main.js",
   "scripts": {
-    "test": "cross-env USE_QUEUE=false NODE_ENV=test jest --silent --verbose --collectCoverage  && jest-coverage-badges --output badges",
+    "test": "cross-env USE_QUEUE=false NODE_ENV=test jest  --verbose --collectCoverage  && jest-coverage-badges --output badges",
     "test:watch": "npm test -- --watch",
     "build": "cross-env NODE_ENV=production webpack --config webpack.prod.js",
-    "start": "cross-env NODE_ENV=production node --max-old-space-size=1192 ./dist/main.js | bunyan",
-    "dev": "cross-env NODE_ENV=development npx ts-node-dev ./src/index.ts | bunyan"
+    "start": "cross-env NODE_ENV=production node --max-old-space-size=1192 ./dist/main.js",
+    "dev": "cross-env NODE_ENV=development npx ts-node-dev ./src/index.ts"
   },
   "author": "Tac Etarip",
   "license": "ISC",
@@ -16,7 +16,6 @@
     "advanced-settings": "git+https://github.com/nodeboot/advanced-settings.git",
     "axios": "^0.24.0",
     "bcrypt": "^5.0.1",
-    "bunyan": "^1.8.15",
     "chalk": "^4.1.2",
     "colors": "^1.4.0",
     "compression": "^1.7.4",
@@ -28,13 +27,15 @@
     "jsonpath": "^1.1.1",
     "jsonwebtoken": "^8.5.1",
     "knex": "^0.95.14",
+    "log4js": "^6.4.7",
     "morgan": "^1.10.0",
     "mysql2": "^2.3.3",
     "nodeboot-oauth2-starter": "git+https://github.com/usil/nodeboot-oauth2-starter.git#fix-validator-middleware",
     "rxjs": "^7.4.0",
     "stompit": "^1.0.0",
     "throng": "^5.0.0",
-    "tslib": "^2.3.1"
+    "tslib": "^2.3.1",
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.0",
@@ -51,6 +52,7 @@
     "@types/stompit": "^0.26.3",
     "@types/supertest": "^2.0.11",
     "@types/throng": "^5.0.3",
+    "@types/uuid": "^8.3.4",
     "@typescript-eslint/eslint-plugin": "^5.3.1",
     "@typescript-eslint/parser": "^5.3.1",
     "eslint": "^8.2.0",

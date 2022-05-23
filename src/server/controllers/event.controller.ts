@@ -9,7 +9,6 @@ import {
   Event,
 } from '../dtos/eventhosInterface';
 import bcrypt from 'bcrypt';
-import colors from 'colors';
 import jwt from 'jsonwebtoken';
 import { getConfig } from '../../../config/main.config';
 import crypto from 'crypto';
@@ -17,9 +16,10 @@ import jp from 'jsonpath';
 import { ParsedQs } from 'qs';
 import controllerHelpers from './helpers/controller-helpers';
 import util from 'util';
-import Logger from 'bunyan';
+import { Logger } from 'log4js';
 import { Client } from 'stompit';
 import { ConfigGlobalDto } from '../../../config/config.dto';
+import ErrorForNext from './helpers/ErrorForNext';
 
 interface ContractsExecutionBody {
   orderedContracts: Record<string, EventContract[]>;
@@ -41,6 +41,7 @@ interface EventContract {
   action_security: ActionSecurity;
 }
 class EventControllers {
+  configuration = getConfig();
   knexPool: Knex;
   scryptPromise = util.promisify(crypto.scrypt);
   encryptionKey: Buffer;
@@ -123,11 +124,14 @@ class EventControllers {
       const eventIdentifier = req.query['event-identifier'] as string;
 
       if (!systemKey || !eventIdentifier) {
-        return res.status(400).json({
-          code: 400020,
-          message:
-            'Either the access key or the identifier for the event was not send.',
-        });
+        return this.returnError(
+          'Either the access key or the identifier for the event was not send.',
+          'Either the access key or the identifier for the event was not send.',
+          400201,
+          400,
+          'createContract',
+          next,
+        );
       }
 
       const event = (await this.knexPool
@@ -143,10 +147,14 @@ class EventControllers {
       };
 
       if (!event) {
-        return res.status(404).json({
-          code: 400024,
-          message: `The event ${eventIdentifier} does not exist.`,
-        });
+        return this.returnError(
+          `The event ${eventIdentifier} does not exist.`,
+          `The event ${eventIdentifier} does not exist.`,
+          400202,
+          400,
+          'eventValidation',
+          next,
+        );
       }
 
       const client = (
@@ -158,17 +166,25 @@ class EventControllers {
       )[0];
 
       if (!client) {
-        return res.status(404).json({
-          code: 400004,
-          message: `The client does not exist.`,
-        });
+        return this.returnError(
+          `The client does not exist.`,
+          `The client does not exist.`,
+          404201,
+          404,
+          'eventValidation',
+          next,
+        );
       }
 
       if (client.revoked) {
-        return res.status(403).json({
-          code: 400023,
-          message: `The client access has been revoked.`,
-        });
+        return this.returnError(
+          `The client access has been revoked.`,
+          `The client access has been revoked.`,
+          403201,
+          403,
+          'eventValidation',
+          next,
+        );
       }
 
       if (client.access_token) {
@@ -180,10 +196,14 @@ class EventControllers {
           res.locals.eventId = event.id;
           return next();
         }
-        return res.status(401).json({
-          code: 400001,
-          message: 'Incorrect token',
-        });
+        return this.returnError(
+          'Incorrect token',
+          'Incorrect token',
+          401201,
+          401,
+          'eventValidation',
+          next,
+        );
       }
 
       jwt.verify(
@@ -191,16 +211,28 @@ class EventControllers {
         getConfig().oauth2.jwtSecret,
         (err: any, decode: any) => {
           if (err) {
-            return res.status(401).json({
-              code: 400001,
-              message: 'Incorrect token',
-            });
+            return this.returnError(
+              'Incorrect token',
+              'Incorrect token',
+              401202,
+              401,
+              'eventValidation',
+              next,
+            );
           }
           this.handleDecodeData(decode, client, res, next, event);
         },
       );
     } catch (error) {
-      this.returnError(error, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500201,
+        500,
+        'eventValidation',
+        next,
+        error,
+      );
     }
   };
 
@@ -220,10 +252,14 @@ class EventControllers {
       res.locals.eventId = event.id;
       return next();
     }
-    return res.status(401).json({
-      code: 400001,
-      message: 'Incorrect token',
-    });
+    return this.returnError(
+      'Incorrect token',
+      'Incorrect token',
+      401202,
+      401,
+      'handleDecodeData',
+      next,
+    );
   };
 
   /**
@@ -237,10 +273,14 @@ class EventControllers {
   ) => {
     try {
       if (!res.locals.eventId) {
-        return res.status(400).json({
-          code: 400020,
-          message: 'Event Id was not send.',
-        });
+        return this.returnError(
+          'Event Id was not send.',
+          'Event Id was not send.',
+          400203,
+          400,
+          'getEventContracts',
+          next,
+        );
       }
       const eventContracts = (await this.knexPool
         .from('contract')
@@ -287,11 +327,23 @@ class EventControllers {
       res.locals.eventContracts = eventContracts;
       return next();
     } catch (error) {
-      this.returnError(error, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500202,
+        500,
+        'getEventContracts',
+        next,
+        error,
+      );
     }
   };
 
-  getContractExecutionDetail = async (req: Request, res: Response) => {
+  getContractExecutionDetail = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const { id } = req.params;
       const result = await this.knexPool
@@ -317,7 +369,15 @@ class EventControllers {
         content: parsedResult,
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500203,
+        500,
+        'getContractExecutionDetail',
+        next,
+        error,
+      );
     }
   };
 
@@ -325,27 +385,39 @@ class EventControllers {
    *
    * @description Manages the event logic
    */
-  manageEvent = async (req: Request, res: Response) => {
+  manageEvent = async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!res.locals.eventId || !res.locals.eventContracts) {
-        return res.status(400).json({
-          code: 400020,
-          message: 'Event Id or Event Contract List was not send.',
-        });
+        return this.returnError(
+          'Event Id or Event Contract List was not send.',
+          'Event Id or Event Contract List was not send.',
+          400204,
+          400,
+          'manageEvent',
+          next,
+        );
       }
 
       if (isNaN(res.locals.eventId)) {
-        return res.status(400).json({
-          code: 400020,
-          message: 'Event Id is not a number.',
-        });
+        return this.returnError(
+          'Event Id is not a number.',
+          'Event Id is not a number.',
+          400205,
+          400,
+          'manageEvent',
+          next,
+        );
       }
 
       if (!res.locals.eventContracts.length) {
-        return res.status(400).json({
-          code: 400020,
-          message: 'Event Contract is not an array.',
-        });
+        return this.returnError(
+          'Event Contract is not an array.',
+          'Event Contract is not an array.',
+          400206,
+          400,
+          'manageEvent',
+          next,
+        );
       }
 
       const eventId = res.locals.eventId as number;
@@ -416,7 +488,15 @@ class EventControllers {
 
       return res.status(200).json({ code: 20000, message: 'success' });
     } catch (error) {
-      this.returnError(error, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500204,
+        500,
+        'manageEvent',
+        next,
+        error,
+      );
     }
   };
 
@@ -507,6 +587,7 @@ class EventControllers {
     },
   ) => {
     try {
+      this.configuration.log().debug(eventContract, receivedEvent, parsedReq);
       if (eventContract.action_security.type === 'oauth2_client') {
         const jsonAxiosBaseAuthConfig = JSON.parse(
           await this.decryptString(
@@ -831,7 +912,11 @@ class EventControllers {
    *
    * @description List all of the received events
    */
-  listReceivedEvents = async (req: Request, res: Response) => {
+  listReceivedEvents = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const { itemsPerPage, offset, pageIndex, order } =
         controllerHelpers.getPaginationData(req);
@@ -943,11 +1028,23 @@ class EventControllers {
         },
       });
     } catch (error) {
-      this.returnError(error, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500205,
+        500,
+        'listReceivedEvents',
+        next,
+        error,
+      );
     }
   };
 
-  getReceivedEventDetails = async (req: Request, res: Response) => {
+  getReceivedEventDetails = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const { id } = req.params;
       const receivedEventSearch = await this.knexPool
@@ -995,7 +1092,15 @@ class EventControllers {
         content: { receivedEvent, executedEventContracts: searchResult },
       });
     } catch (error) {
-      this.returnError(error, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500206,
+        500,
+        'getReceivedEventDetails',
+        next,
+        error,
+      );
     }
   };
 
@@ -1041,7 +1146,7 @@ class EventControllers {
     return newArray;
   };
 
-  createEvent = async (req: Request, res: Response) => {
+  createEvent = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { system_id, identifier, name, operation, description } = req.body;
       const insertResult = await this.knexPool.table('event').insert({
@@ -1057,11 +1162,19 @@ class EventControllers {
         content: { eventId: insertResult[0] },
       });
     } catch (error) {
-      this.returnError(error, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500207,
+        500,
+        'createEvent',
+        next,
+        error,
+      );
     }
   };
 
-  updateEvent = async (req: Request, res: Response) => {
+  updateEvent = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const { name, operation, description } = req.body;
@@ -1078,11 +1191,19 @@ class EventControllers {
         message: 'success',
       });
     } catch (error) {
-      this.returnError(error, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500208,
+        500,
+        'updateEvent',
+        next,
+        error,
+      );
     }
   };
 
-  deleteEvent = async (req: Request, res: Response) => {
+  deleteEvent = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
 
@@ -1093,10 +1214,14 @@ class EventControllers {
         .andWhere('deleted', false);
 
       if (eventInContracts.length > 0) {
-        return res.status(400).json({
-          code: 400500,
-          message: 'Event has active contracts',
-        });
+        return this.returnError(
+          'Event has active contracts',
+          'Event has active contracts',
+          400207,
+          400,
+          'manageEvent',
+          next,
+        );
       }
 
       await this.knexPool
@@ -1109,11 +1234,19 @@ class EventControllers {
         message: 'success',
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500209,
+        500,
+        'deleteEvent',
+        next,
+        error,
+      );
     }
   };
 
-  getEvents = async (req: Request, res: Response) => {
+  getEvents = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { systemId, eventName } = req.query;
 
@@ -1171,33 +1304,44 @@ class EventControllers {
         },
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500210,
+        500,
+        'getEvents',
+        next,
+        error,
+      );
     }
   };
 
-  // ------------------------------------------- //
+  returnError = (
+    message: string,
+    logMessage: string,
+    errorCode: number,
+    statusCode: number,
+    onFunction: string,
+    next: NextFunction,
+    error?: any,
+  ) => {
+    const errorForNext = new ErrorForNext(
+      message,
+      statusCode,
+      errorCode,
+      onFunction,
+      'event.controller.ts',
+    ).setLogMessage(logMessage);
 
-  /**
-   *
-   * @description Creates an observable given an axios config
-   */
-  createAxiosObservable = (axiosConfig: AxiosRequestConfig) => {
-    return defer(() =>
-      axios({ ...axiosConfig, timeout: getConfig().subscription.timeout }),
-    ).pipe(take(1));
-  };
+    if (error && error.response === undefined)
+      errorForNext.setOriginalError(error);
 
-  returnError = (error: any, res: Response) => {
-    console.log('here is an error:', colors.red(error));
-    if (error.sqlState) {
-      return res.status(501).json({
-        code: 500001,
-        message: `Data base error, with code ${error.sqlState}`,
-      });
-    }
-    return res
-      .status(500)
-      .json({ code: 500000, message: 'Server Internal Error' });
+    if (error && error.response) errorForNext.setErrorObject(error.response);
+
+    if (error && error.sqlState)
+      errorForNext.setMessage(`Data base error. ${message}`);
+
+    return next(errorForNext.toJSON());
   };
 }
 

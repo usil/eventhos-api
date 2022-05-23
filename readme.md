@@ -83,6 +83,8 @@ To know more about `system`, `event` and `contract` take a look at the full [doc
 | QUEUE_DESTINATION                    | The queue destination                          | eventhos      |
 | QUEUE_HEART_BEAT                     | The hearth beat for the queue manager          | 0,0           |
 | QUEUE_HEADERS_HOST                   | The host to send in the headers                | /             |
+| USE_FILE                             | Use a file for the logs                        | false         |
+| LOG_LEVEL                            | Set the logger level                           | debug         |
 
 You should create an .env file with the following:
 

@@ -1,20 +1,22 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { Knex } from 'knex';
 
-import colors from 'colors';
 import { getConfig } from '../../../config/main.config';
 import crypto from 'crypto';
 import controllerHelpers from './helpers/controller-helpers';
 import { Action } from '../dtos/eventhosInterface';
 import { AxiosRequestConfig } from 'axios';
+import ErrorForNext from './helpers/ErrorForNext';
 
 class ActionControllers {
   knexPool: Knex;
+  configuration = getConfig();
+
   constructor(knexPool: Knex) {
     this.knexPool = knexPool;
   }
 
-  createAction = async (req: Request, res: Response) => {
+  createAction = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const {
         system_id,
@@ -33,6 +35,21 @@ class ActionControllers {
         clientId,
         clientSecret,
       } = req.body;
+
+      const action = await this.knexPool
+        .table('action')
+        .where('identifier', identifier);
+
+      if (action && action.length > 0) {
+        return this.returnError(
+          'Action identifier already exist',
+          'Action identifier already exist',
+          400001,
+          400,
+          'createAction',
+          next,
+        );
+      }
 
       const parsedHeaders: Record<string, any> = {};
       let parsedBody: Record<string, any> = {};
@@ -75,7 +92,11 @@ class ActionControllers {
 
       const algorithm = 'aes-256-ctr';
       const initVector = crypto.randomBytes(16);
-      const key = crypto.scryptSync(getConfig().encryption.key, 'salt', 32);
+      const key = crypto.scryptSync(
+        this.configuration.encryption.key,
+        'salt',
+        32,
+      );
       const cipher = crypto.createCipheriv(algorithm, key, initVector);
 
       let encryptedData = cipher.update(
@@ -119,7 +140,7 @@ class ActionControllers {
 
       const initSecurityVector = crypto.randomBytes(16);
       const securityKey = crypto.scryptSync(
-        getConfig().encryption.key,
+        this.configuration.encryption.key,
         'salt',
         32,
       );
@@ -152,24 +173,47 @@ class ActionControllers {
         content: { actionId: actionCreationResult[0] },
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500001,
+        500,
+        'createAction',
+        next,
+        error,
+      );
     }
   };
 
-  returnError = (error: any, res: Response) => {
-    console.log('here is an error:', colors.red(error));
-    if (error.sqlState) {
-      return res.status(501).json({
-        code: 500001,
-        message: `Data base error, with code ${error.sqlState}`,
-      });
-    }
-    return res
-      .status(500)
-      .json({ code: 500000, message: 'Server Internal Error' });
+  returnError = (
+    message: string,
+    logMessage: string,
+    errorCode: number,
+    statusCode: number,
+    onFunction: string,
+    next: NextFunction,
+    error?: any,
+  ) => {
+    const errorForNext = new ErrorForNext(
+      message,
+      statusCode,
+      errorCode,
+      onFunction,
+      'action.controllers.ts',
+    ).setLogMessage(logMessage);
+
+    if (error && error.response === undefined)
+      errorForNext.setOriginalError(error);
+
+    if (error && error.response) errorForNext.setErrorObject(error.response);
+
+    if (error && error.sqlState)
+      errorForNext.setMessage(`Data base error. ${message}`);
+
+    return next(errorForNext.toJSON());
   };
 
-  getAction = async (req: Request, res: Response) => {
+  getAction = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
 
@@ -195,11 +239,14 @@ class ActionControllers {
       )[0];
 
       if (!action) {
-        return res.status(404).json({
-          code: 400004,
-          message: 'No action found',
-          content: action,
-        });
+        return this.returnError(
+          'Action does not exist',
+          'Action does not exist',
+          400002,
+          404,
+          'getAction',
+          next,
+        );
       }
 
       let jsonAxiosBaseAuthConfig: AxiosRequestConfig = {};
@@ -242,11 +289,19 @@ class ActionControllers {
         content: parsedAction,
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500002,
+        500,
+        'getAction',
+        next,
+        error,
+      );
     }
   };
 
-  getActions = async (req: Request, res: Response) => {
+  getActions = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { itemsPerPage, offset, pageIndex, order, activeSort } =
         controllerHelpers.getPaginationData(req);
@@ -280,7 +335,15 @@ class ActionControllers {
         },
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500003,
+        500,
+        'getActions',
+        next,
+        error,
+      );
     }
   };
 
@@ -289,14 +352,18 @@ class ActionControllers {
     const keySplit = stringToDecrypt.split('|.|');
     const encryptedPart = keySplit[1];
     const initVector = Buffer.from(keySplit[0], 'hex');
-    const key = crypto.scryptSync(getConfig().encryption.key, 'salt', 32);
+    const key = crypto.scryptSync(
+      this.configuration.encryption.key,
+      'salt',
+      32,
+    );
     const decipher = crypto.createDecipheriv(algorithm, key, initVector);
     let decryptedData = decipher.update(encryptedPart, 'hex', 'utf-8');
     decryptedData += decipher.final('utf8');
     return decryptedData;
   }
 
-  updateAction = async (req: Request, res: Response) => {
+  updateAction = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
 
@@ -398,14 +465,26 @@ class ActionControllers {
         message: 'success',
       });
     } catch (error) {
-      this.returnError(error, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500004,
+        500,
+        'updateAction',
+        next,
+        error,
+      );
     }
   };
 
   encryptString(stringToEncrypt: string) {
     const algorithm = 'aes-256-ctr';
     const initVector = crypto.randomBytes(16);
-    const key = crypto.scryptSync(getConfig().encryption.key, 'salt', 32);
+    const key = crypto.scryptSync(
+      this.configuration.encryption.key,
+      'salt',
+      32,
+    );
     const cipher = crypto.createCipheriv(algorithm, key, initVector);
     let encryptedData = cipher.update(stringToEncrypt, 'utf-8', 'hex');
     const hexedInitVector = initVector.toString('hex');
@@ -413,7 +492,7 @@ class ActionControllers {
     return { hexedInitVector, encryptedData };
   }
 
-  deleteAction = async (req: Request, res: Response) => {
+  deleteAction = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
 
@@ -424,10 +503,14 @@ class ActionControllers {
         .andWhere('deleted', false);
 
       if (actionInContracts.length > 0) {
-        return res.status(400).json({
-          code: 400500,
-          message: 'Action has active contracts',
-        });
+        return this.returnError(
+          'Action has active contracts',
+          'Action has active contracts',
+          400003,
+          404,
+          'getAction',
+          next,
+        );
       }
 
       await this.knexPool
@@ -440,7 +523,15 @@ class ActionControllers {
         message: 'success',
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500005,
+        500,
+        'deleteAction',
+        next,
+        error,
+      );
     }
   };
 }

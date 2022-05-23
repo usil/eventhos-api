@@ -1,5 +1,4 @@
 import { getConfig } from '../../config/main.config';
-import bunyan from 'bunyan';
 
 describe('Correct configuration declaration', () => {
   process.env.USE_QUEUE = 'false';
@@ -13,7 +12,7 @@ describe('Correct configuration declaration', () => {
   });
 
   it('Correct logger', () => {
-    expect(configuration.log()).toBeInstanceOf(bunyan);
+    expect(configuration.log()).toBeTruthy();
   });
 
   it('Correct port', () => {

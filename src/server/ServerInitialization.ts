@@ -1,5 +1,5 @@
 import compression from 'compression';
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cors from 'cors';
@@ -12,7 +12,7 @@ import {
 import knex, { Knex } from 'knex';
 import { getConfig } from '../../config/main.config';
 import OauthBoot from 'nodeboot-oauth2-starter';
-
+import { v4 as uuidv4 } from 'uuid';
 /**
  *
  * @description Use this class to create and serve an application
@@ -42,11 +42,15 @@ class ServerInitialization
     const oauthBoot = new OauthBoot(
       localApp,
       this.knexPool,
-      this.configuration.oauth2.jwtSecret,
-      this.configuration.encryption.key,
-      [],
-      'eventhos_api',
-      '::usil.app',
+      this.configuration.log(),
+      {
+        jwtSecret: this.configuration.oauth2.jwtSecret,
+        cryptoSecret: this.configuration.encryption.key,
+        extraResources: [],
+        mainApplicationName: 'eventhos_api',
+        clientIdSuffix: '::usil.app',
+        expiresIn: this.configuration.oauth2.jwtTokenExpiresIn,
+      },
     );
 
     this.app = oauthBoot.expressSecured;
@@ -62,7 +66,8 @@ class ServerInitialization
     try {
       await this.oauthBoot.init();
     } catch (error) {
-      throw new Error('An error ocurred while creating the server');
+      this.configuration.log().fatal(error);
+      process.exit(0);
     }
   }
 
@@ -70,7 +75,7 @@ class ServerInitialization
    * @description Adds the necessary knexjs configuration
    */
   addKnexjsConfig(): void {
-    this.knexPool = knex({
+    const knexConfig = {
       client: 'mysql2',
       version: '5.7',
       connection: {
@@ -86,7 +91,11 @@ class ServerInitialization
         min: this.configuration.dataBase.poolMin,
         max: this.configuration.dataBase.poolMax,
       },
-    });
+    };
+    this.configuration
+      .log()
+      .debug('Starting knex with configuration', knexConfig);
+    this.knexPool = knex(knexConfig);
   }
 
   /**
@@ -115,12 +124,39 @@ class ServerInitialization
     this.app.use(fullRoute.route, fullRoute.router);
   }
 
+  errorHandle = (
+    err: {
+      message: string;
+      statusCode?: number;
+      errorCode?: number;
+      onFunction?: string;
+      onLibrary?: string;
+      onFile?: string;
+      logMessage?: string;
+      errorObject?: Record<string, any>;
+    },
+    _req: Request,
+    res: Response,
+    _next: NextFunction,
+  ) => {
+    const uudid = uuidv4();
+    this.configuration
+      .log()
+      .error(uudid, '-', err.logMessage || err.message, { ...err });
+    return res.status(err.statusCode || 500).json({
+      message: err.message,
+      code: err.errorCode || 500000,
+      errorUUID: uudid,
+    });
+  };
+
   /**
    * @description Creates the server
    */
   createServer(): http.Server {
     this.server = http.createServer(this.app);
     this.server.listen(this.port);
+    this.app.use(this.errorHandle);
     return this.server;
   }
 }
