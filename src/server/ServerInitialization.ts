@@ -105,7 +105,14 @@ class ServerInitialization
     this.app.use(helmet());
     this.app.use(compression());
     this.app.use(cors());
-    this.app.use(morgan(':method :url'));
+    this.app.use(
+      morgan(':method :url', {
+        skip: function (req: Request, _res: Response) {
+          if (req.url == '/health' || req.url === '/') return true;
+          return false;
+        },
+      }),
+    );
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
     this.app.obGet('/', ':', this.healthEndpoint);
