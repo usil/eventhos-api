@@ -31,7 +31,7 @@ describe('Event routes works', () => {
     );
 
     expect(mockSecureExpress.obPost).toHaveBeenCalledWith(
-      '/received',
+      '/send',
       ':',
       expect.anything(),
       expect.anything(),

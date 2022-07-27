@@ -27,15 +27,15 @@ export const createRouteEvent = (
     routeName,
   );
 
-  authRouter.obPost('/', 'event:create', controllers.createEvent);
-
   authRouter.obPost(
-    '/received',
+    '/send',
     ':',
     controllers.eventValidation,
     controllers.getEventContracts,
     controllers.manageEvent,
   );
+
+  authRouter.obPost('/', 'event:create', controllers.createEvent);
 
   authRouter.obGet('/received', 'event:select', controllers.listReceivedEvents);
 

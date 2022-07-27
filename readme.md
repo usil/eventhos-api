@@ -15,7 +15,8 @@ To take a deep look into how eventhos works check the [documentation](https://gi
 
 ## Requirements
 
-- nodejs >= 14
+- nodejs = 14
+- mysql >= 5.5 (user with all privileges)
 
 ## Cluster Mode
 
