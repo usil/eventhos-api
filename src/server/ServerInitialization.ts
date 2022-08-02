@@ -92,13 +92,14 @@ class ServerInitialization
         max: this.configuration.dataBase.poolMax,
       },
     };
-    let safeKnexConfigToLog = JSON.parse(JSON.stringify(knexConfig))
-    safeKnexConfigToLog.connection.password = "***";
-    
+
+    const safeKnexConfigToLog = JSON.parse(JSON.stringify(knexConfig));
+    safeKnexConfigToLog.connection.password = '***';
+
     this.configuration
       .log()
       .debug('Starting knex with configuration', safeKnexConfigToLog);
-    
+
     this.knexPool = knex(knexConfig);
   }
 

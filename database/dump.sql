@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS `system` (
   UNIQUE INDEX `idProducer_UNIQUE` (`id` ASC),
   UNIQUE INDEX `indifier_UNIQUE` (`identifier` ASC),
   UNIQUE INDEX `client_id_UNIQUE` (`client_id` ASC),
-  UNIQUE INDEX `name_UNIQUE` (`name` ASC))
 ENGINE = InnoDB;
 
 
@@ -47,7 +46,6 @@ CREATE TABLE IF NOT EXISTS `event` (
   UNIQUE INDEX `idProducer_Event_UNIQUE` (`id` ASC),
   UNIQUE INDEX `identifier_UNIQUE` (`identifier` ASC),
   INDEX `fk_event_system1_idx` (`system_id` ASC),
-  UNIQUE INDEX `name_UNIQUE` (`name` ASC),
   CONSTRAINT `fk_event_system1`
     FOREIGN KEY (`system_id`)
     REFERENCES `system` (`id`)
@@ -74,7 +72,6 @@ CREATE TABLE IF NOT EXISTS `action` (
   UNIQUE INDEX `identifier_UNIQUE` (`identifier` ASC),
   UNIQUE INDEX `id_UNIQUE` (`id` ASC),
   INDEX `fk_action_system1_idx` (`system_id` ASC),
-  UNIQUE INDEX `name_UNIQUE` (`name` ASC),
   CONSTRAINT `fk_action_system1`
     FOREIGN KEY (`system_id`)
     REFERENCES `system` (`id`)

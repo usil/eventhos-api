@@ -3,6 +3,10 @@ import { Request, Response } from 'express';
 import { Knex } from 'knex';
 import crypto from 'crypto';
 
+jest.mock('nanoid', () => {
+  return { nanoid: () => '1234' };
+});
+
 const mockRes = () => {
   const res: Response = {} as Response;
   res.status = jest.fn().mockReturnValue(res);
@@ -340,7 +344,7 @@ describe('Actions controller functions work', () => {
 
     expect(knex.insert).toHaveBeenCalledWith({
       system_id: 1,
-      identifier: 'action_identifier',
+      identifier: 'action_identifier-1234',
       name: 'action name',
       http_configuration: hexedVector + '|.|' + 'encrypted' + 'final',
       operation: 'new',
