@@ -46,7 +46,7 @@ class ServerInitialization
       {
         jwtSecret: this.configuration.oauth2.jwtSecret,
         cryptoSecret: this.configuration.encryption.key,
-        extraResources: [],
+        extraResources: ['contract', 'action', 'event', 'system'],
         mainApplicationName: 'eventhos_api',
         clientIdSuffix: '::usil.app',
         expiresIn: this.configuration.oauth2.jwtTokenExpiresIn,
