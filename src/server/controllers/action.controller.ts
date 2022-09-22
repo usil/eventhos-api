@@ -7,6 +7,7 @@ import controllerHelpers from './helpers/controller-helpers';
 import { Action } from '../dtos/eventhosInterface';
 import { AxiosRequestConfig } from 'axios';
 import ErrorForNext from './helpers/ErrorForNext';
+import { nanoid } from 'nanoid';
 
 class ActionControllers {
   knexPool: Knex;
@@ -111,7 +112,7 @@ class ActionControllers {
 
       const actionCreationResult = await this.knexPool.table('action').insert({
         system_id,
-        identifier,
+        identifier: `${identifier}-${nanoid(10)}`,
         name,
         http_configuration: hexedInitVector + '|.|' + encryptedData,
         operation,

@@ -3,6 +3,10 @@ import controllerHelpers from '../../../src/server/controllers/helpers/controlle
 import { Request, Response } from 'express';
 import { Knex } from 'knex';
 
+jest.mock('nanoid', () => {
+  return { nanoid: () => '1234' };
+});
+
 const mockRes = () => {
   const res: Response = {} as Response;
   res.status = jest.fn().mockReturnValue(res);
@@ -51,7 +55,7 @@ describe('Contract controller works', () => {
     expect(knex.table).toHaveBeenCalledWith('contract');
     expect(knex.insert).toHaveBeenCalledWith({
       name: 'contract name',
-      identifier: 'contract_identifier',
+      identifier: 'contract_identifier-1234',
       event_id: 1,
       action_id: 2,
     });

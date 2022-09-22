@@ -2,6 +2,10 @@ import { Request, Response } from 'express';
 import { Knex } from 'knex';
 import SystemControllers from '../../../src/server/controllers/system.controller';
 
+jest.mock('nanoid', () => {
+  return { nanoid: () => '1234' };
+});
+
 const mockRes = () => {
   const res: Response = {} as Response;
   res.status = jest.fn().mockReturnValue(res);

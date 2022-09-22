@@ -13,6 +13,10 @@ const scryptPromise = util.promisify(crypto.scrypt);
 
 const mockNext = jest.fn();
 
+jest.mock('nanoid', () => {
+  return { nanoid: () => '1234' };
+});
+
 jest.mock('axios', () => jest.fn().mockReturnValue({ data: 1, headers: 1 }));
 jest.mock('knex', () => {
   const mKnex = {
@@ -1287,7 +1291,7 @@ describe('Event routes work accordingly', () => {
     const messageObj = { mock: 1 } as any;
 
     eventControllers.handleMessageReading(
-      null,
+      null as any,
       mockRawMessage,
       configuration,
       client,
@@ -1452,7 +1456,7 @@ describe('Event routes work accordingly', () => {
     } as any;
 
     eventControllers.clientSubscriptionHandler(
-      null,
+      null as any,
       message,
       configuration,
       client,
@@ -1969,7 +1973,7 @@ describe('Event routes work accordingly', () => {
     expect(knexMock.table).toHaveBeenCalledWith('event');
     expect(knexMock.insert).toHaveBeenCalledWith({
       system_id: 1,
-      identifier: 'Identifier',
+      identifier: 'Identifier-1234',
       name: 'new name',
       operation: 'new',
       description: 'Updated description',
@@ -2018,7 +2022,7 @@ describe('Event routes work accordingly', () => {
       baseSearchResult,
       'id',
       'similarField',
-    );
+    ) as any;
 
     expect(joinResult[2]).toBe(undefined);
     expect(joinResult.length).toBe(2);

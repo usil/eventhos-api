@@ -2,6 +2,7 @@ import { Knex } from 'knex';
 import { NextFunction, Request, Response } from 'express';
 import controllerHelpers from './helpers/controller-helpers';
 import ErrorForNext from './helpers/ErrorForNext';
+import { nanoid } from 'nanoid';
 class SystemController {
   knexPool: Knex;
 
@@ -101,7 +102,7 @@ class SystemController {
         }
 
         const systemInsert = await this.knexPool.table('system').insert({
-          identifier,
+          identifier: `${identifier}-${nanoid(10)}`,
           name,
           type,
           class: systemClass,

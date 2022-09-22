@@ -4,6 +4,7 @@ import { Knex } from 'knex';
 import { ContractJoined } from '../dtos/eventhosInterface';
 import controllerHelpers from './helpers/controller-helpers';
 import ErrorForNext from './helpers/ErrorForNext';
+import { nanoid } from 'nanoid';
 
 class ContractControllers {
   knexPool: Knex;
@@ -34,7 +35,7 @@ class ContractControllers {
         .table('contract')
         .insert({
           name,
-          identifier,
+          identifier: `${identifier}-${nanoid(10)}`,
           event_id: eventId,
           action_id: actionId,
           order,

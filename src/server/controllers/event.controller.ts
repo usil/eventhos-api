@@ -20,6 +20,7 @@ import { Logger } from 'log4js';
 import { Client } from 'stompit';
 import { ConfigGlobalDto } from '../../../config/config.dto';
 import ErrorForNext from './helpers/ErrorForNext';
+import { nanoid } from 'nanoid';
 
 interface ContractsExecutionBody {
   orderedContracts: Record<string, EventContract[]>;
@@ -1151,7 +1152,7 @@ class EventControllers {
       const { system_id, identifier, name, operation, description } = req.body;
       const insertResult = await this.knexPool.table('event').insert({
         system_id,
-        identifier,
+        identifier: `${identifier}-${nanoid(10)}`,
         name,
         operation,
         description,

@@ -46,7 +46,7 @@ class ServerInitialization
       {
         jwtSecret: this.configuration.oauth2.jwtSecret,
         cryptoSecret: this.configuration.encryption.key,
-        extraResources: [],
+        extraResources: ['contract', 'action', 'event', 'system'],
         mainApplicationName: 'eventhos_api',
         clientIdSuffix: '::usil.app',
         expiresIn: this.configuration.oauth2.jwtTokenExpiresIn,
@@ -92,13 +92,14 @@ class ServerInitialization
         max: this.configuration.dataBase.poolMax,
       },
     };
-    let safeKnexConfigToLog = JSON.parse(JSON.stringify(knexConfig))
-    safeKnexConfigToLog.connection.password = "***";
-    
+
+    const safeKnexConfigToLog = JSON.parse(JSON.stringify(knexConfig));
+    safeKnexConfigToLog.connection.password = '***';
+
     this.configuration
       .log()
       .debug('Starting knex with configuration', safeKnexConfigToLog);
-    
+
     this.knexPool = knex(knexConfig);
   }
 
