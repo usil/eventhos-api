@@ -22,7 +22,7 @@ To take a deep look into how eventhos works check the [documentation](https://gi
 
 Modify the CPU_COUNT environment variables with the number of CPUs that you want to use.
 
-## Data base
+## Database
 
 For the moment eventhos works with a mysql database using knex, you should pass your database information in the environment variables.
 
