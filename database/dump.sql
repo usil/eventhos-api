@@ -33,7 +33,7 @@ CREATE TABLE `OAUTH2_ApplicationResource` (
   UNIQUE KEY `oauth2_applicationresource_resourceidentifier_id_unique` (`resourceIdentifier`,`id`),
   KEY `oauth2_applicationresource_applications_id_foreign` (`applications_id`),
   CONSTRAINT `oauth2_applicationresource_applications_id_foreign` FOREIGN KEY (`applications_id`) REFERENCES `OAUTH2_Applications` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -51,7 +51,7 @@ CREATE TABLE `OAUTH2_Applications` (
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `oauth2_applications_identifier_unique` (`identifier`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -77,7 +77,7 @@ CREATE TABLE `OAUTH2_Clients` (
   UNIQUE KEY `oauth2_clients_identifier_unique` (`identifier`),
   KEY `oauth2_clients_subject_id_foreign` (`subject_id`),
   CONSTRAINT `oauth2_clients_subject_id_foreign` FOREIGN KEY (`subject_id`) REFERENCES `OAUTH2_Subjects` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -97,7 +97,7 @@ CREATE TABLE `OAUTH2_Permissions` (
   PRIMARY KEY (`id`),
   KEY `oauth2_permissions_applicationresource_id_foreign` (`applicationResource_id`),
   CONSTRAINT `oauth2_permissions_applicationresource_id_foreign` FOREIGN KEY (`applicationResource_id`) REFERENCES `OAUTH2_ApplicationResource` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=37 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -116,7 +116,7 @@ CREATE TABLE `OAUTH2_RolePermission` (
   KEY `oauth2_rolepermission_roles_id_foreign` (`roles_id`),
   CONSTRAINT `oauth2_rolepermission_permissions_id_foreign` FOREIGN KEY (`permissions_id`) REFERENCES `OAUTH2_Permissions` (`id`),
   CONSTRAINT `oauth2_rolepermission_roles_id_foreign` FOREIGN KEY (`roles_id`) REFERENCES `OAUTH2_Roles` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -134,7 +134,7 @@ CREATE TABLE `OAUTH2_Roles` (
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `oauth2_roles_identifier_unique` (`identifier`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -153,7 +153,7 @@ CREATE TABLE `OAUTH2_SubjectRole` (
   KEY `oauth2_subjectrole_roles_id_foreign` (`roles_id`),
   CONSTRAINT `oauth2_subjectrole_roles_id_foreign` FOREIGN KEY (`roles_id`) REFERENCES `OAUTH2_Roles` (`id`),
   CONSTRAINT `oauth2_subjectrole_subject_id_foreign` FOREIGN KEY (`subject_id`) REFERENCES `OAUTH2_Subjects` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -171,7 +171,7 @@ CREATE TABLE `OAUTH2_Subjects` (
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -193,7 +193,7 @@ CREATE TABLE `OAUTH2_Users` (
   UNIQUE KEY `oauth2_users_username_unique` (`username`),
   KEY `oauth2_users_subject_id_foreign` (`subject_id`),
   CONSTRAINT `oauth2_users_subject_id_foreign` FOREIGN KEY (`subject_id`) REFERENCES `OAUTH2_Subjects` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 -- -----------------------------------------------------
@@ -214,7 +214,8 @@ CREATE TABLE IF NOT EXISTS `system` (
   UNIQUE INDEX `idProducer_UNIQUE` (`id` ASC),
   UNIQUE INDEX `indifier_UNIQUE` (`identifier` ASC),
   UNIQUE INDEX `client_id_UNIQUE` (`client_id` ASC),
-ENGINE = InnoDB;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 
 -- -----------------------------------------------------
@@ -239,7 +240,8 @@ CREATE TABLE IF NOT EXISTS `event` (
     REFERENCES `system` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
-ENGINE = InnoDB;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 
 -- -----------------------------------------------------
@@ -265,7 +267,8 @@ CREATE TABLE IF NOT EXISTS `action` (
     REFERENCES `system` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
-ENGINE = InnoDB;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 
 -- -----------------------------------------------------
@@ -285,7 +288,8 @@ CREATE TABLE IF NOT EXISTS `action_security` (
     REFERENCES `action` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
-ENGINE = InnoDB;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 
 -- -----------------------------------------------------
@@ -317,7 +321,8 @@ CREATE TABLE IF NOT EXISTS `contract` (
     REFERENCES `action` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
-ENGINE = InnoDB;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 
 -- -----------------------------------------------------
@@ -331,7 +336,8 @@ CREATE TABLE IF NOT EXISTS `variable` (
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE INDEX `id_UNIQUE` (`id` ASC))
-ENGINE = InnoDB;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 
 -- -----------------------------------------------------
@@ -350,7 +356,8 @@ CREATE TABLE IF NOT EXISTS `received_event` (
     REFERENCES `event` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
-ENGINE = InnoDB;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 
 -- -----------------------------------------------------
@@ -375,7 +382,8 @@ CREATE TABLE IF NOT EXISTS `contract_exc_detail` (
     REFERENCES `contract` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
-ENGINE = InnoDB;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 
 -- -----------------------------------------------------
@@ -397,7 +405,8 @@ CREATE TABLE IF NOT EXISTS `contract_exc_try` (
     REFERENCES `contract_exc_detail` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
-ENGINE = InnoDB;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping routines for database 'acme'
