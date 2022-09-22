@@ -213,7 +213,7 @@ CREATE TABLE IF NOT EXISTS `system` (
   PRIMARY KEY (`id`),
   UNIQUE INDEX `idProducer_UNIQUE` (`id` ASC),
   UNIQUE INDEX `indifier_UNIQUE` (`identifier` ASC),
-  UNIQUE INDEX `client_id_UNIQUE` (`client_id` ASC),
+  UNIQUE INDEX `client_id_UNIQUE` (`client_id` ASC)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -239,7 +239,7 @@ CREATE TABLE IF NOT EXISTS `event` (
     FOREIGN KEY (`system_id`)
     REFERENCES `system` (`id`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON UPDATE NO ACTION
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -266,7 +266,7 @@ CREATE TABLE IF NOT EXISTS `action` (
     FOREIGN KEY (`system_id`)
     REFERENCES `system` (`id`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON UPDATE NO ACTION
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -287,7 +287,7 @@ CREATE TABLE IF NOT EXISTS `action_security` (
     FOREIGN KEY (`action_id`)
     REFERENCES `action` (`id`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON UPDATE NO ACTION
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -320,7 +320,7 @@ CREATE TABLE IF NOT EXISTS `contract` (
     FOREIGN KEY (`action_id`)
     REFERENCES `action` (`id`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON UPDATE NO ACTION
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -335,7 +335,7 @@ CREATE TABLE IF NOT EXISTS `variable` (
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE INDEX `id_UNIQUE` (`id` ASC))
+  UNIQUE INDEX `id_UNIQUE` (`id` ASC)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -355,7 +355,7 @@ CREATE TABLE IF NOT EXISTS `received_event` (
     FOREIGN KEY (`event_id`)
     REFERENCES `event` (`id`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON UPDATE NO ACTION
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -381,7 +381,7 @@ CREATE TABLE IF NOT EXISTS `contract_exc_detail` (
     FOREIGN KEY (`contract_id`)
     REFERENCES `contract` (`id`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON UPDATE NO ACTION
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -404,7 +404,7 @@ CREATE TABLE IF NOT EXISTS `contract_exc_try` (
     FOREIGN KEY (`contract_exc_detail_id`)
     REFERENCES `contract_exc_detail` (`id`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON UPDATE NO ACTION
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
