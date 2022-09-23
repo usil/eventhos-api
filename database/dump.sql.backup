@@ -15,6 +15,186 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
+--
+-- Table structure for table `OAUTH2_ApplicationResource`
+--
+
+DROP TABLE IF EXISTS `OAUTH2_ApplicationResource`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `OAUTH2_ApplicationResource` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `resourceIdentifier` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `applications_id` int(10) unsigned NOT NULL,
+  `deleted` tinyint(1) DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `oauth2_applicationresource_resourceidentifier_id_unique` (`resourceIdentifier`,`id`),
+  KEY `oauth2_applicationresource_applications_id_foreign` (`applications_id`),
+  CONSTRAINT `oauth2_applicationresource_applications_id_foreign` FOREIGN KEY (`applications_id`) REFERENCES `OAUTH2_Applications` (`id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `OAUTH2_Applications`
+--
+
+DROP TABLE IF EXISTS `OAUTH2_Applications`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `OAUTH2_Applications` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `identifier` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `deleted` tinyint(1) DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `oauth2_applications_identifier_unique` (`identifier`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `OAUTH2_Clients`
+--
+
+DROP TABLE IF EXISTS `OAUTH2_Clients`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `OAUTH2_Clients` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `client_id` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `subject_id` int(10) unsigned NOT NULL,
+  `client_secret` varchar(175) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `identifier` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `access_token` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `revoked` tinyint(1) DEFAULT '0',
+  `deleted` tinyint(1) DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `oauth2_clients_client_id_unique` (`client_id`),
+  UNIQUE KEY `oauth2_clients_identifier_unique` (`identifier`),
+  KEY `oauth2_clients_subject_id_foreign` (`subject_id`),
+  CONSTRAINT `oauth2_clients_subject_id_foreign` FOREIGN KEY (`subject_id`) REFERENCES `OAUTH2_Subjects` (`id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `OAUTH2_Permissions`
+--
+
+DROP TABLE IF EXISTS `OAUTH2_Permissions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `OAUTH2_Permissions` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `allowed` varchar(75) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `applicationResource_id` int(10) unsigned NOT NULL,
+  `deleted` tinyint(1) DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `oauth2_permissions_applicationresource_id_foreign` (`applicationResource_id`),
+  CONSTRAINT `oauth2_permissions_applicationresource_id_foreign` FOREIGN KEY (`applicationResource_id`) REFERENCES `OAUTH2_ApplicationResource` (`id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `OAUTH2_RolePermission`
+--
+
+DROP TABLE IF EXISTS `OAUTH2_RolePermission`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `OAUTH2_RolePermission` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `permissions_id` int(10) unsigned NOT NULL,
+  `roles_id` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `oauth2_rolepermission_permissions_id_roles_id_unique` (`permissions_id`,`roles_id`),
+  KEY `oauth2_rolepermission_roles_id_foreign` (`roles_id`),
+  CONSTRAINT `oauth2_rolepermission_permissions_id_foreign` FOREIGN KEY (`permissions_id`) REFERENCES `OAUTH2_Permissions` (`id`),
+  CONSTRAINT `oauth2_rolepermission_roles_id_foreign` FOREIGN KEY (`roles_id`) REFERENCES `OAUTH2_Roles` (`id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `OAUTH2_Roles`
+--
+
+DROP TABLE IF EXISTS `OAUTH2_Roles`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `OAUTH2_Roles` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `identifier` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `deleted` tinyint(1) DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `oauth2_roles_identifier_unique` (`identifier`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `OAUTH2_SubjectRole`
+--
+
+DROP TABLE IF EXISTS `OAUTH2_SubjectRole`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `OAUTH2_SubjectRole` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `subject_id` int(10) unsigned NOT NULL,
+  `roles_id` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `oauth2_subjectrole_subject_id_roles_id_unique` (`subject_id`,`roles_id`),
+  KEY `oauth2_subjectrole_roles_id_foreign` (`roles_id`),
+  CONSTRAINT `oauth2_subjectrole_roles_id_foreign` FOREIGN KEY (`roles_id`) REFERENCES `OAUTH2_Roles` (`id`),
+  CONSTRAINT `oauth2_subjectrole_subject_id_foreign` FOREIGN KEY (`subject_id`) REFERENCES `OAUTH2_Subjects` (`id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `OAUTH2_Subjects`
+--
+
+DROP TABLE IF EXISTS `OAUTH2_Subjects`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `OAUTH2_Subjects` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(45) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `deleted` tinyint(1) DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `OAUTH2_Users`
+--
+
+DROP TABLE IF EXISTS `OAUTH2_Users`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `OAUTH2_Users` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `subject_id` int(10) unsigned NOT NULL,
+  `username` varchar(45) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password` varchar(75) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `deleted` tinyint(1) DEFAULT '0',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `oauth2_users_username_unique` (`username`),
+  KEY `oauth2_users_subject_id_foreign` (`subject_id`),
+  CONSTRAINT `oauth2_users_subject_id_foreign` FOREIGN KEY (`subject_id`) REFERENCES `OAUTH2_Subjects` (`id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 -- -----------------------------------------------------
 -- Table `system`
