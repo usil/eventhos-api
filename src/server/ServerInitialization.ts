@@ -1,7 +1,6 @@
 import compression from 'compression';
 import express, { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
-import morgan from 'morgan';
 import cors from 'cors';
 import http from 'http';
 import Route from './util/Route';
@@ -110,14 +109,6 @@ class ServerInitialization
     this.app.use(helmet());
     this.app.use(compression());
     this.app.use(cors());
-    this.app.use(
-      morgan(':method :url', {
-        skip: function (req: Request, _res: Response) {
-          if (req.url == '/health' || req.url === '/') return true;
-          return false;
-        },
-      }),
-    );
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
     this.app.obGet('/', ':', this.healthEndpoint);

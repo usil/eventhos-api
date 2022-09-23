@@ -28,7 +28,6 @@
     "jsonwebtoken": "^8.5.1",
     "knex": "^0.95.14",
     "log4js": "^6.4.7",
-    "morgan": "^1.10.0",
     "mysql2": "^2.3.3",
     "nanoid": "^3.3.4",
     "nodeboot-oauth2-starter": "git+https://github.com/usil/nodeboot-oauth2-starter.git#fix-validator-middleware",
