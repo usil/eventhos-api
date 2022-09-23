@@ -19,6 +19,8 @@
 -- -----------------------------------------------------
 -- Table `system`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `system` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'The Id For The Producer',
   `class` VARCHAR(45) NOT NULL COMMENT '\'The class of the system (producer or consumer)\'',
@@ -41,6 +43,8 @@ CREATE TABLE IF NOT EXISTS `system` (
 -- -----------------------------------------------------
 -- Table `event`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `event` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'The id for the event',
   `system_id` INT UNSIGNED NOT NULL,
@@ -67,6 +71,8 @@ CREATE TABLE IF NOT EXISTS `event` (
 -- -----------------------------------------------------
 -- Table `action`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `action` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `system_id` INT UNSIGNED NOT NULL,
@@ -94,6 +100,8 @@ CREATE TABLE IF NOT EXISTS `action` (
 -- -----------------------------------------------------
 -- Table `action_security`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `action_security` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `action_id` INT UNSIGNED NOT NULL,
@@ -115,6 +123,8 @@ CREATE TABLE IF NOT EXISTS `action_security` (
 -- -----------------------------------------------------
 -- Table `contract`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `contract` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `action_id` INT UNSIGNED NOT NULL,
@@ -148,6 +158,8 @@ CREATE TABLE IF NOT EXISTS `contract` (
 -- -----------------------------------------------------
 -- Table `variable`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `variable` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `key` VARCHAR(300) NOT NULL,
@@ -163,6 +175,8 @@ CREATE TABLE IF NOT EXISTS `variable` (
 -- -----------------------------------------------------
 -- Table `received_event`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `received_event` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'The id for the event',
   `event_id` INT UNSIGNED NOT NULL COMMENT 'The id of the event',
@@ -183,6 +197,8 @@ CREATE TABLE IF NOT EXISTS `received_event` (
 -- -----------------------------------------------------
 -- Table `contract_exc_detail`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `contract_exc_detail` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'The id for the event',
   `contract_id` INT UNSIGNED NOT NULL,
@@ -209,6 +225,8 @@ CREATE TABLE IF NOT EXISTS `contract_exc_detail` (
 -- -----------------------------------------------------
 -- Table `contract_exc_try`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `contract_exc_try` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `contract_exc_detail_id` INT UNSIGNED NOT NULL,
