@@ -121,7 +121,7 @@ class EventControllers {
    */
   eventValidation = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const systemKey = req.query['access-key'] as string;
+      const systemKey = (req.query['access-key'] || req.headers['access-key'])  as string;
       const eventIdentifier = req.query['event-identifier'] as string;
 
       if (!systemKey || !eventIdentifier) {
