@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { Knex } from 'knex';
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { concat, defer, merge, Observable, take } from 'rxjs';
+import { async, concat, defer, merge, Observable, take } from 'rxjs';
 import {
   Action,
   ActionSecurity,
@@ -267,6 +267,49 @@ class EventControllers {
    *
    * @description Gets all the contracts of an event
    */
+  getEventContract = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    try {
+      const contractId = req.query['contract-id'] ?? 0;
+      if (!res.locals.eventId) {
+        return this.returnError(
+          'Event Id was not send.',
+          'Event Id was not send.',
+          400203,
+          400,
+          'getEventContract',
+          next,
+        );
+      }
+      const eventContract = await this.knexPool
+        .from('contract')
+        .select()
+        .join('event', 'contract.event_id', 'event.id')
+        .join('action', 'contract.action_id', 'action.id')
+        .join('action_security', 'action.id', 'action_security.action_id')
+        .options({ nestTables: true })
+        .where('contract.id', contractId as any)
+        .where('contract.event_id', res.locals.eventId)
+        .where('contract.active', true)
+        .andWhere('contract.deleted', false)
+        .first();
+      res.locals.eventContract = eventContract;
+      return next();
+    } catch (error) {
+      return this.returnError(
+        error.message,
+        error.message,
+        500202,
+        500,
+        'getEventContract',
+        next,
+        error,
+      );
+    }
+  };
   getEventContracts = async (
     req: Request,
     res: Response,
@@ -386,6 +429,95 @@ class EventControllers {
    *
    * @description Manages the event logic
    */
+  manageEventContract = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    try {
+      if (!res.locals.eventId || !res.locals.eventContract) {
+        return this.returnError(
+          'Event Id or Event Contract List was not send.',
+          'Event Id or Event Contract List was not send.',
+          400204,
+          400,
+          'manageEventContract',
+          next,
+        );
+      }
+
+      if (isNaN(res.locals.eventId)) {
+        return this.returnError(
+          'Event Id is not a number.',
+          'Event Id is not a number.',
+          400205,
+          400,
+          'manageEventContract',
+          next,
+        );
+      }
+
+      if (!res.locals.eventContract) {
+        return this.returnError(
+          'Event Contract is not an array.',
+          'Event Contract is not an array.',
+          400206,
+          400,
+          'manageEventContract',
+          next,
+        );
+      }
+
+      const eventId = res.locals.eventId as number;
+
+      const eventContract = res.locals.eventContract as EventContract;
+
+      const basicRequest = {
+        headers: req.headers,
+        query: req.query,
+        body: req.body,
+        method: req.method,
+        url: req.protocol + '://' + req.get('host') + req.originalUrl,
+      };
+
+      const baseRequestEncryption = await this.encryptString(
+        JSON.stringify(basicRequest),
+      );
+
+      const receivedEvent = await this.knexPool.table('received_event').insert({
+        event_id: eventId,
+        received_request:
+          baseRequestEncryption.hexedInitVector +
+          '|.|' +
+          baseRequestEncryption.encryptedData,
+      });
+
+      const parsedReq = {
+        headers: req.headers,
+        query: req.query,
+        body: req.body,
+        oauthResponse: {} as {
+          headers: Record<string, string>;
+          body: Record<string, any>;
+        },
+      };
+
+      this.executeContract(eventContract, receivedEvent, parsedReq);
+
+      return res.status(200).json({ code: 20000, message: 'success' });
+    } catch (error) {
+      return this.returnError(
+        error.message,
+        error.message,
+        500204,
+        500,
+        'manageEventContract',
+        next,
+        error,
+      );
+    }
+  };
+
   manageEvent = async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!res.locals.eventId || !res.locals.eventContracts) {
@@ -564,7 +696,7 @@ class EventControllers {
   generateOrderFromEventContracts = (eventContracts: EventContract[]) => {
     const orders: Record<string, EventContract[]> = {};
     for (const eventContract of eventContracts) {
-      const orderString = eventContract.contract.order;
+      const orderString = eventContract.contract?.order;
       if (orders[orderString] !== undefined) {
         orders[orderString].push(eventContract);
         continue;
