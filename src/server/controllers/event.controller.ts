@@ -274,10 +274,21 @@ class EventControllers {
   ) => {
     try {
       const contractId = req.query['contract-id'] ?? 0;
+      const contractDetailId = req.body['contractDetailId'];
       if (!res.locals.eventId) {
         return this.returnError(
           'Event Id was not send.',
           'Event Id was not send.',
+          400203,
+          400,
+          'getEventContract',
+          next,
+        );
+      }
+      if (!contractDetailId) {
+        return this.returnError(
+          'Contract detail Id was not send.',
+          'Contract detail Id was not send.',
           400203,
           400,
           'getEventContract',
@@ -297,6 +308,7 @@ class EventControllers {
         .andWhere('contract.deleted', false)
         .first();
       res.locals.eventContract = eventContract;
+      res.locals.contractDetailId = contractDetailId;
       return next();
     } catch (error) {
       return this.returnError(
@@ -435,7 +447,11 @@ class EventControllers {
     next: NextFunction,
   ) => {
     try {
-      if (!res.locals.eventId || !res.locals.eventContract) {
+      if (
+        !res.locals.eventId ||
+        !res.locals.eventContract ||
+        !res.locals.contractDetailId
+      ) {
         return this.returnError(
           'Event Id or Event Contract List was not send.',
           'Event Id or Event Contract List was not send.',
@@ -483,7 +499,31 @@ class EventControllers {
       const baseRequestEncryption = await this.encryptString(
         JSON.stringify(basicRequest),
       );
+      const contractDetailId = res.locals.contractDetailId;
+      const contractExcDetailExist = await this.knexPool
+        .table('contract_exc_detail')
+        .increment('attempts', 1)
+        .where('id', contractDetailId)
+        .where('attempts', 0)
+        .where('state', 'error');
 
+      const contractExcTryExist = await this.knexPool
+        .table('contract_exc_try')
+        .increment('attempts', 1)
+        .where('contract_exc_detail_id', contractDetailId)
+        .where('attempts', 0)
+        .where('state', 'error');
+
+      if (!contractExcDetailExist || !contractExcTryExist) {
+        return this.returnError(
+          'Detail of the contract does not exist or has already been processed',
+          'Detail of the contract does not exist or has already been processed',
+          400206,
+          400,
+          'manageEventContract',
+          next,
+        );
+      }
       const receivedEvent = await this.knexPool.table('received_event').insert({
         event_id: eventId,
         received_request:
@@ -501,8 +541,7 @@ class EventControllers {
           body: Record<string, any>;
         },
       };
-
-      this.executeContract(eventContract, receivedEvent, parsedReq);
+      await this.executeContract(eventContract, receivedEvent, parsedReq);
 
       return res.status(200).json({ code: 20000, message: 'success' });
     } catch (error) {
@@ -1206,6 +1245,7 @@ class EventControllers {
         .select(
           'contract_exc_detail.id as detailId',
           'contract_exc_detail.state',
+          'contract_exc_detail.attempts as attempts',
           'contract.id as contractId',
           'contract.identifier as contractIdentifier',
           'contract.name as contractName',

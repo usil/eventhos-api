@@ -244,6 +244,10 @@ CREATE TABLE IF NOT EXISTS `contract_exc_try` (
     ON DELETE NO ACTION
     ON UPDATE NO ACTION
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE contract_exc_try ADD attempts INT DEFAULT 0;
+ALTER TABLE contract_exc_detail ADD attempts INT DEFAULT 0;
+
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
