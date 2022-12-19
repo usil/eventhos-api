@@ -275,10 +275,22 @@ class EventControllers {
     try {
       const contractId = req.query['contract-id'] ?? 0;
       const contractDetailId = req.body['contractDetailId'];
+      // console.log(req.body);
+      const receivedEventId = req.body['receivedEventId'];
       if (!res.locals.eventId) {
         return this.returnError(
           'Event Id was not send.',
           'Event Id was not send.',
+          400203,
+          400,
+          'getEventContract',
+          next,
+        );
+      }
+      if (!receivedEventId) {
+        return this.returnError(
+          'Received event Id was not send.',
+          'Received event Id was not send.',
           400203,
           400,
           'getEventContract',
@@ -309,6 +321,8 @@ class EventControllers {
         .first();
       res.locals.eventContract = eventContract;
       res.locals.contractDetailId = contractDetailId;
+      res.locals.receivedEventId = receivedEventId;
+
       return next();
     } catch (error) {
       return this.returnError(
@@ -488,17 +502,31 @@ class EventControllers {
 
       const eventContract = res.locals.eventContract as EventContract;
 
+      const receivedEventExist = await this.knexPool
+        .table('received_event')
+        .where('id', res.locals.receivedEventId)
+        .first();
+
+      const receivedEventExistRequest = JSON.parse(
+        await this.decryptString(receivedEventExist.received_request),
+      );
       const basicRequest = {
-        headers: req.headers,
-        query: req.query,
-        body: req.body,
-        method: req.method,
+        headers: receivedEventExistRequest.headers,
+        query: receivedEventExistRequest.query,
+        body: receivedEventExistRequest.body,
+        method: receivedEventExistRequest.method,
         url: req.protocol + '://' + req.get('host') + req.originalUrl,
       };
-
       const baseRequestEncryption = await this.encryptString(
         JSON.stringify(basicRequest),
       );
+      const receivedEvent = await this.knexPool.table('received_event').insert({
+        event_id: eventId,
+        received_request:
+          baseRequestEncryption.hexedInitVector +
+          '|.|' +
+          baseRequestEncryption.encryptedData,
+      });
       const contractDetailId = res.locals.contractDetailId;
       const contractExcDetailExist = await this.knexPool
         .table('contract_exc_detail')
@@ -506,7 +534,6 @@ class EventControllers {
         .where('id', contractDetailId)
         .where('attempts', 0)
         .where('state', 'error');
-
       const contractExcTryExist = await this.knexPool
         .table('contract_exc_try')
         .increment('attempts', 1)
@@ -524,18 +551,11 @@ class EventControllers {
           next,
         );
       }
-      const receivedEvent = await this.knexPool.table('received_event').insert({
-        event_id: eventId,
-        received_request:
-          baseRequestEncryption.hexedInitVector +
-          '|.|' +
-          baseRequestEncryption.encryptedData,
-      });
 
       const parsedReq = {
-        headers: req.headers,
-        query: req.query,
-        body: req.body,
+        headers: receivedEventExistRequest?.headers,
+        query: receivedEventExistRequest?.query,
+        body: receivedEventExistRequest?.body,
         oauthResponse: {} as {
           headers: Record<string, string>;
           body: Record<string, any>;
