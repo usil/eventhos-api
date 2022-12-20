@@ -73,7 +73,7 @@ describe('Event routes work accordingly', () => {
     res.locals = {};
     return res;
   };
-
+  //----------------------------------|||||||||||---------------------------------------
   describe('Event validation middleware works correctly', () => {
     const mockKnex = () => {
       const knex = {} as Knex;
@@ -97,6 +97,7 @@ describe('Event routes work accordingly', () => {
       const mockReq = () => {
         const req: Request = {} as Request;
         req.query = {};
+        req.headers = {};
         return req;
       };
 
@@ -112,7 +113,7 @@ describe('Event routes work accordingly', () => {
         'Either the access key or the identifier for the event was not send.',
         400201,
         400,
-        'createContract',
+        'eventValidation',
         mockedNext,
       );
     });
@@ -405,7 +406,8 @@ describe('Event routes work accordingly', () => {
 
       bcryptSpy.mockRestore();
     });
-
+    //--------------------   |||||<<<<>>>>>>   ----------------------------------------------------------------
+    // eslint-disable-next-line jest/expect-expect
     it('Error 500', async () => {
       const mockedNext = jest.fn();
 
@@ -415,6 +417,7 @@ describe('Event routes work accordingly', () => {
           'event-identifier': 'new_profesor',
           'access-key': 'asecurekey',
         };
+        req.headers = {};
         return req;
       };
 
@@ -425,18 +428,21 @@ describe('Event routes work accordingly', () => {
       localKnexMock.where = jest
         .fn()
         .mockReturnValue(localKnexMock)
-        .mockRejectedValue({ error: 'an error' });
+        .mockImplementation(() => {
+          throw new Error();
+        });
       eventControllers.knexPool = localKnexMock;
       eventControllers.returnError = jest.fn();
-      await eventControllers.eventValidation(
+      const r = await eventControllers.eventValidation(
         mockReq(),
         mockResponse,
         mockedNext,
       );
-
       expect(eventControllers.returnError).toHaveBeenCalled();
     });
   });
+
+  //------------------------------------------------|||||||||||||||||------------------------------------
 
   describe('Gets the contract list for an event', () => {
     const eventControllers = new EventControllers(knex({}), encryptKey);
