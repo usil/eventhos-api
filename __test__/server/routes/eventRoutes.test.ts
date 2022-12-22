@@ -67,5 +67,13 @@ describe('Event routes works', () => {
     );
 
     expect(actionRouteResult.route).toBe('/event');
+
+    expect(mockSecureExpress.obPost).toHaveBeenCalledWith(
+      '/send/contract',
+      ':',
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
   });
 });
