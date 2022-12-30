@@ -616,7 +616,6 @@ class EventControllers {
       const eventId = res.locals.eventId as number;
 
       const eventContracts = res.locals.eventContracts as EventContract[];
-
       const basicRequest = {
         headers: req.headers,
         query: req.query,
@@ -641,6 +640,7 @@ class EventControllers {
         headers: req.headers,
         query: req.query,
         body: req.body,
+        url: req.originalUrl,
         oauthResponse: {} as {
           headers: Record<string, string>;
           body: Record<string, any>;
@@ -810,7 +810,6 @@ class EventControllers {
       const parsedHeaders: Record<string, string> = {};
       const parsedQueryParams: Record<string, string> = {};
       let parsedBody: Record<string, any> = {};
-
       for (const headerKey in jsonAxiosBaseConfig.headers) {
         const header = jsonAxiosBaseConfig.headers[headerKey];
         const parsedHeader = this.getVariables(header, 0, parsedReq, 'header');
@@ -834,7 +833,22 @@ class EventControllers {
           ...fullParsedBody,
         };
       }
-
+      if (jsonAxiosBaseConfig.url.search('${.')) {
+        let parsedUrl = jsonAxiosBaseConfig.url;
+        const parseUrlArr = parsedUrl.split('/$');
+        parseUrlArr.shift();
+        parseUrlArr.map((key, index) => {
+          key = key.replace(/\/.*/g, '');
+          const parsedUrlParam = this.getVariables(
+            '$' + key,
+            0,
+            parsedReq,
+            'urlParam',
+          );
+          parsedUrl = parsedUrl.replace('$' + key, parsedUrlParam);
+        });
+        jsonAxiosBaseConfig.url = parsedUrl;
+      }
       const httpConfiguration: AxiosRequestConfig = {
         url: jsonAxiosBaseConfig.url,
         method: jsonAxiosBaseConfig.method,
