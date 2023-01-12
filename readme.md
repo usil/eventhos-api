@@ -76,6 +76,13 @@ To know more about `system`, `event` and `contract` take a look at the full [doc
 | DATA_BASE_ACQUIRE_CONNECTION_TIMEOUT | The timeout to acquire a connection using knex | 10000         |
 | DATA_BASE_POOL_MIN                   | The minimum knex connection pool               | 100           |
 | DATA_BASE_POOL_MAX                   | The maximum knex connection pool               | 300           |
+| SMTP_HOST                   | Sender identifier               |           |
+| SMTP_PORT                   | Communication endpoint that defines the routing of email transactions               |           |
+| SMTP_USER                   | User of your mail server               |            |
+| SMTP_PASSWORD                   | Password of your mail server               |           |
+| SMTP_SECURE                   | Encrypt               | true           |
+| SMTP_TLS_CIPHERS                   | Are algorithms that help secure network connections that use Transport Layer Security               |    SSLv3        |
+| SMTP_DEFAULT_RECIPIENT                   | Default recipients if there aren't recipients in a contract or if there are error before event's send               |            |
 | USE_QUEUE                            | Use the queue integration?                     | false         |
 | QUEUE_HOST                           | The host of the queue manager                  | localhost     |
 | QUEUE_PORT                           | The port of the queue manager                  | 61613         |
@@ -102,6 +109,18 @@ CRYPTO_KEY = secret_key
 DATA_BASE_ACQUIRE_CONNECTION_TIMEOUT = 10000
 DATA_BASE_POOL_MIN = 100
 DATA_BASE_POOL_MAX = 300
+```
+
+Only add the following if you want to send mail on error to recipients:
+
+```text
+SMTP_HOST=smtp.host.com
+SMTP_PORT=587
+SMTP_USER=user@company.com
+SMTP_PASSWORD=*****
+SMTP_SECURE=true
+SMTP_TLS_CIPHERS=SSLv3
+SMTP_DEFAULT_RECIPIENT=aaa@mail.com,bbb@mail.com
 ```
 
 Only add the following if you want to use the queue integration:

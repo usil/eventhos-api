@@ -247,7 +247,7 @@ CREATE TABLE IF NOT EXISTS `contract_exc_try` (
 
 ALTER TABLE contract_exc_try ADD attempts INT DEFAULT 0 COMMENT 'Accumulated execution retries of contract - event';
 ALTER TABLE contract_exc_detail ADD attempts INT DEFAULT 0 COMMENT 'Accumulated execution retries of contract - event';
-
+ALTER TABLE contract ADD mail_recipients_on_error VARCHAR(100) DEFAULT NULL 'Mail of people who will receive the mail when there is an error at the time of executing the contract'
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --

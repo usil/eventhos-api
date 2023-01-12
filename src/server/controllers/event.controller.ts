@@ -7,6 +7,7 @@ import {
   ActionSecurity,
   Contract,
   Event,
+  System,
 } from '../dtos/eventhosInterface';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
@@ -21,6 +22,11 @@ import { Client } from 'stompit';
 import { ConfigGlobalDto } from '../../../config/config.dto';
 import ErrorForNext from './helpers/ErrorForNext';
 import { nanoid } from 'nanoid';
+import { MailService } from '../util/Mailer';
+import fs from 'fs';
+import { promisify } from 'util';
+
+const readFile = promisify(fs.readFile);
 
 interface ContractsExecutionBody {
   orderedContracts: Record<string, EventContract[]>;
@@ -29,6 +35,7 @@ interface ContractsExecutionBody {
     headers: Record<any, any>;
     body: any;
     query: ParsedQs;
+    url: string;
     oauthResponse: {
       headers: Record<string, string>;
       body: Record<string, any>;
@@ -40,6 +47,8 @@ interface EventContract {
   event: Event;
   contract: Contract;
   action_security: ActionSecurity;
+  system_producer?: System;
+  system_consumer?: System;
 }
 class EventControllers {
   configuration = getConfig();
@@ -47,6 +56,7 @@ class EventControllers {
   scryptPromise = util.promisify(crypto.scrypt);
   encryptionKey: Buffer;
   queueClient: Client;
+  mailService = new (MailService as any)();
 
   constructor(knexPool: Knex, encryptionKey: Buffer, queueClient?: Client) {
     this.knexPool = knexPool;
@@ -114,7 +124,14 @@ class EventControllers {
 
     client.ack(message);
   }
-
+  sendMailToEventhosManagersOnError = async (message: string) => {
+    await this.mailService.sendMail({
+      to: process.env.SMTP_DEFAULT_RECIPIENT,
+      text: message,
+      html: `<b>${message}</b>`,
+      subject: 'Hello, I am eventhos mailer, I am informer of errors ✔',
+    });
+  };
   /**
    *
    * @describe Validates the recived event
@@ -126,6 +143,9 @@ class EventControllers {
       const eventIdentifier = req.query['event-identifier'] as string;
 
       if (!systemKey || !eventIdentifier) {
+        this.sendMailToEventhosManagersOnError(
+          'Either the access key or the identifier for the event was not send.',
+        );
         return this.returnError(
           'Either the access key or the identifier for the event was not send.',
           'Either the access key or the identifier for the event was not send.',
@@ -149,6 +169,9 @@ class EventControllers {
       };
 
       if (!event) {
+        this.sendMailToEventhosManagersOnError(
+          `The event ${eventIdentifier} does not exist.`,
+        );
         return this.returnError(
           `The event ${eventIdentifier} does not exist.`,
           `The event ${eventIdentifier} does not exist.`,
@@ -168,6 +191,7 @@ class EventControllers {
       )[0];
 
       if (!client) {
+        this.sendMailToEventhosManagersOnError(`The client does not exist.`);
         return this.returnError(
           `The client does not exist.`,
           `The client does not exist.`,
@@ -179,6 +203,9 @@ class EventControllers {
       }
 
       if (client.revoked) {
+        this.sendMailToEventhosManagersOnError(
+          `The client access has been revoked.`,
+        );
         return this.returnError(
           `The client access has been revoked.`,
           `The client access has been revoked.`,
@@ -198,6 +225,7 @@ class EventControllers {
           res.locals.eventId = event.id;
           return next();
         }
+        this.sendMailToEventhosManagersOnError(`Incorrect token`);
         return this.returnError(
           'Incorrect token',
           'Incorrect token',
@@ -213,6 +241,7 @@ class EventControllers {
         getConfig().oauth2.jwtSecret,
         (err: any, decode: any) => {
           if (err) {
+            this.sendMailToEventhosManagersOnError(`Incorrect token`);
             return this.returnError(
               'Incorrect token',
               'Incorrect token',
@@ -226,6 +255,7 @@ class EventControllers {
         },
       );
     } catch (error) {
+      this.sendMailToEventhosManagersOnError(error.message);
       return this.returnError(
         error.message,
         error.message,
@@ -276,9 +306,9 @@ class EventControllers {
     try {
       const contractId = req.query['contract-id'] ?? 0;
       const contractDetailId = req.body['contractDetailId'];
-      // console.log(req.body);
       const receivedEventId = req.body['receivedEventId'];
       if (!res.locals.eventId) {
+        this.sendMailToEventhosManagersOnError('Event Id was not send.');
         return this.returnError(
           'Event Id was not send.',
           'Event Id was not send.',
@@ -289,6 +319,9 @@ class EventControllers {
         );
       }
       if (!receivedEventId) {
+        this.sendMailToEventhosManagersOnError(
+          'Received event Id was not send.',
+        );
         return this.returnError(
           'Received event Id was not send.',
           'Received event Id was not send.',
@@ -299,6 +332,9 @@ class EventControllers {
         );
       }
       if (!contractDetailId) {
+        this.sendMailToEventhosManagersOnError(
+          'Contract detail Id was not send.',
+        );
         return this.returnError(
           'Contract detail Id was not send.',
           'Contract detail Id was not send.',
@@ -314,6 +350,16 @@ class EventControllers {
         .join('event', 'contract.event_id', 'event.id')
         .join('action', 'contract.action_id', 'action.id')
         .join('action_security', 'action.id', 'action_security.action_id')
+        .join(
+          'system AS system_producer',
+          'event.system_id',
+          'system_producer.id',
+        )
+        .join(
+          'system AS system_consumer',
+          'action.system_id',
+          'system_consumer.id',
+        )
         .options({ nestTables: true })
         .where('contract.id', contractId as any)
         .where('contract.event_id', res.locals.eventId)
@@ -326,6 +372,7 @@ class EventControllers {
 
       return next();
     } catch (error) {
+      this.sendMailToEventhosManagersOnError(error.message);
       return this.returnError(
         error.message,
         error.message,
@@ -344,6 +391,7 @@ class EventControllers {
   ) => {
     try {
       if (!res.locals.eventId) {
+        this.sendMailToEventhosManagersOnError('Event Id was not send');
         return this.returnError(
           'Event Id was not send.',
           'Event Id was not send.',
@@ -359,6 +407,16 @@ class EventControllers {
         .join('event', 'contract.event_id', 'event.id')
         .join('action', 'contract.action_id', 'action.id')
         .join('action_security', 'action.id', 'action_security.action_id')
+        .join(
+          'system AS system_producer',
+          'event.system_id',
+          'system_producer.id',
+        )
+        .join(
+          'system AS system_consumer',
+          'action.system_id',
+          'system_consumer.id',
+        )
         .options({ nestTables: true })
         .orderBy('contract.order', 'asc')
         .where('contract.event_id', res.locals.eventId)
@@ -368,6 +426,8 @@ class EventControllers {
         event: Event;
         contract: Contract;
         action_security: ActionSecurity;
+        system_producer: any;
+        system_consumer: any;
       }[];
       if (eventContracts.length === 0) {
         const basicRequest = {
@@ -398,6 +458,7 @@ class EventControllers {
       res.locals.eventContracts = eventContracts;
       return next();
     } catch (error) {
+      this.sendMailToEventhosManagersOnError(error.message);
       return this.returnError(
         error.message,
         error.message,
@@ -467,6 +528,9 @@ class EventControllers {
         !res.locals.eventContract ||
         !res.locals.contractDetailId
       ) {
+        this.sendMailToEventhosManagersOnError(
+          'Event Id or Event Contract List was not send.',
+        );
         return this.returnError(
           'Event Id or Event Contract List was not send.',
           'Event Id or Event Contract List was not send.',
@@ -478,6 +542,7 @@ class EventControllers {
       }
 
       if (isNaN(res.locals.eventId)) {
+        this.sendMailToEventhosManagersOnError('Event Id is not a number.');
         return this.returnError(
           'Event Id is not a number.',
           'Event Id is not a number.',
@@ -489,6 +554,9 @@ class EventControllers {
       }
 
       if (!res.locals.eventContract) {
+        this.sendMailToEventhosManagersOnError(
+          'Event Contract is not an array',
+        );
         return this.returnError(
           'Event Contract is not an array.',
           'Event Contract is not an array.',
@@ -543,6 +611,9 @@ class EventControllers {
         .where('state', 'error');
 
       if (!contractExcDetailExist || !contractExcTryExist) {
+        this.sendMailToEventhosManagersOnError(
+          'Detail of the contract does not exist or has already been processed',
+        );
         return this.returnError(
           'Detail of the contract does not exist or has already been processed',
           'Detail of the contract does not exist or has already been processed',
@@ -557,6 +628,7 @@ class EventControllers {
         headers: receivedEventExistRequest?.headers,
         query: receivedEventExistRequest?.query,
         body: receivedEventExistRequest?.body,
+        url: receivedEventExistRequest?.url,
         oauthResponse: {} as {
           headers: Record<string, string>;
           body: Record<string, any>;
@@ -566,6 +638,7 @@ class EventControllers {
 
       return res.status(200).json({ code: 20000, message: 'success' });
     } catch (error) {
+      this.sendMailToEventhosManagersOnError(error.message);
       return this.returnError(
         error.message,
         error.message,
@@ -581,6 +654,9 @@ class EventControllers {
   manageEvent = async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!res.locals.eventId || !res.locals.eventContracts) {
+        this.sendMailToEventhosManagersOnError(
+          'Event Id or Event Contract List was not send.',
+        );
         return this.returnError(
           'Event Id or Event Contract List was not send.',
           'Event Id or Event Contract List was not send.',
@@ -592,6 +668,7 @@ class EventControllers {
       }
 
       if (isNaN(res.locals.eventId)) {
+        this.sendMailToEventhosManagersOnError('Event Id is not a number');
         return this.returnError(
           'Event Id is not a number.',
           'Event Id is not a number.',
@@ -603,6 +680,9 @@ class EventControllers {
       }
 
       if (!res.locals.eventContracts.length) {
+        this.sendMailToEventhosManagersOnError(
+          'Event Contracts is not an array',
+        );
         return this.returnError(
           'Event Contract is not an array.',
           'Event Contract is not an array.',
@@ -640,7 +720,7 @@ class EventControllers {
         headers: req.headers,
         query: req.query,
         body: req.body,
-        url: req.originalUrl,
+        url: req.protocol + '://' + req.get('host') + req.originalUrl,
         oauthResponse: {} as {
           headers: Record<string, string>;
           body: Record<string, any>;
@@ -681,6 +761,7 @@ class EventControllers {
 
       return res.status(200).json({ code: 20000, message: 'success' });
     } catch (error) {
+      this.sendMailToEventhosManagersOnError(error.message);
       return this.returnError(
         error.message,
         error.message,
@@ -700,6 +781,7 @@ class EventControllers {
       headers: Record<any, any>;
       body: any;
       query: ParsedQs;
+      url: string;
       oauthResponse: {
         headers: Record<string, string>;
         body: Record<string, any>;
@@ -773,12 +855,16 @@ class EventControllers {
       headers: Record<any, any>;
       body: any;
       query: ParsedQs;
+      url: string;
       oauthResponse: {
         headers: Record<string, string>;
         body: Record<string, any>;
       };
     },
   ) => {
+    const parsedHeaders: Record<string, string> = {};
+    const parsedQueryParams: Record<string, string> = {};
+    let parsedBody: Record<string, any> = {};
     try {
       this.configuration.log().debug(eventContract, receivedEvent, parsedReq);
       if (eventContract.action_security.type === 'oauth2_client') {
@@ -806,10 +892,6 @@ class EventControllers {
       const jsonAxiosBaseConfig = JSON.parse(
         await this.decryptString(eventContract.action.http_configuration),
       ) as AxiosRequestConfig;
-
-      const parsedHeaders: Record<string, string> = {};
-      const parsedQueryParams: Record<string, string> = {};
-      let parsedBody: Record<string, any> = {};
       for (const headerKey in jsonAxiosBaseConfig.headers) {
         const header = jsonAxiosBaseConfig.headers[headerKey];
         const parsedHeader = this.getVariables(header, 0, parsedReq, 'header');
@@ -864,7 +946,6 @@ class EventControllers {
         ...httpConfiguration,
         timeout: getConfig().subscription.timeout,
       });
-
       await this.handleContractExecution(result, eventContract, receivedEvent);
 
       return {
@@ -877,6 +958,78 @@ class EventControllers {
           eventContract,
           receivedEvent,
         ).then(() => getConfig().log().info('Error saved'));
+        let receptorsOnError = '';
+        if (
+          eventContract.contract.mail_recipients_on_error.length === 0 ||
+          eventContract.contract.mail_recipients_on_error.length === null
+        ) {
+          receptorsOnError = process.env.SMTP_DEFAULT_RECIPIENT;
+        } else {
+          receptorsOnError = eventContract.contract.mail_recipients_on_error;
+        }
+        let html = await readFile(
+          'src/mail/templates/mailRecipientsOnError.html',
+          'utf8',
+        );
+        const today = new Date();
+        const now = today.toLocaleString();
+        const jsonAxiosBaseConfig = JSON.parse(
+          await this.decryptString(eventContract.action.http_configuration),
+        ) as AxiosRequestConfig;
+        html = html.replace('@contract', eventContract.contract.identifier);
+        html = html.replace(
+          '@when',
+          eventContract.event.identifier +
+            ' - ' +
+            eventContract.event.description,
+        );
+        html = html.replace(
+          '@inWhen',
+          eventContract.system_producer?.identifier +
+            ' - ' +
+            eventContract.system_producer?.description,
+        );
+        html = html.replace(
+          '@then',
+          eventContract.action.identifier +
+            ' - ' +
+            eventContract.action.description,
+        );
+        html = html.replace(
+          '@inThen',
+          eventContract.system_consumer?.identifier +
+            ' - ' +
+            eventContract.system_consumer?.description,
+        );
+        //event
+        html = html.replace('@timestampEvent', now);
+        html = html.replace('@urlEvent', parsedReq.url);
+
+        html = html.replace('@bodyEvent', JSON.stringify(parsedBody));
+        html = html.replace('@headersEvent', JSON.stringify(parsedReq.headers));
+        //subscriber
+        html = html.replace('@timestampSubscriber', now);
+        html = html.replace('@urlSubscriber', jsonAxiosBaseConfig.url);
+        html = html.replace(
+          '@httpStatusSubscriber',
+          error.response?.status ?? 500,
+        );
+        html = html.replace(
+          '@bodySubscriber',
+          JSON.stringify(error.response?.data ?? {}),
+        );
+        html = html.replace(
+          '@headersSubscriber',
+          JSON.stringify(error.response?.headers ?? {}),
+        );
+
+        await this.mailService.sendMail({
+          from: 'usil@eventhos.com',
+          to: receptorsOnError,
+          text: 'There are errors in subscribe system',
+          subject: 'Eventhos Informer on Error',
+          html: html,
+        });
       }
       return {
         message: `Error while executing contract with id ${eventContract.contract.id}`,
