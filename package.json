@@ -1,6 +1,6 @@
 {
   "name": "eventhos-api",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "description": "A template to use knex with mysql",
   "main": "./dist/main.js",
   "scripts": {
