@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS `contract` (
   `deleted` TINYINT(1) NULL DEFAULT 0,
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `mail_recipients_on_error` VARCHAR(100) DEFAULT NULL 'Mail of people who will receive the mail when there is an error at the time of executing the contract',
+  `mail_recipients_on_error` VARCHAR(100) DEFAULT NULL COMMENT 'Mail of people who will receive the mail when there is an error at the time of executing the contract',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `id_UNIQUE` (`id` ASC),
   INDEX `fk_contract_event1_idx` (`event_id` ASC),
