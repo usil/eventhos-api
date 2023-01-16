@@ -2326,6 +2326,7 @@ describe('Event routes work accordingly', () => {
       'contract_exc_detail.id as detailId',
       'contract_exc_detail.state',
       'contract_exc_detail.attempts as attempts',
+      'contract_exc_detail.is_aborted as isAborted',
       'contract.id as contractId',
       'contract.identifier as contractIdentifier',
       'contract.name as contractName',

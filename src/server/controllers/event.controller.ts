@@ -470,7 +470,127 @@ class EventControllers {
       );
     }
   };
+  getContractDetailAndTry = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    try {
+      const contractDetailId = req.body['contractDetailId'];
 
+      if (!contractDetailId) {
+        return this.returnError(
+          'Contract Detail Id was not send.',
+          'Contract Detail Id was not send.',
+          400203,
+          400,
+          'getContractDetail',
+          next,
+        );
+      }
+      const contractDetail = await this.knexPool
+        .from('contract_exc_detail')
+        .select()
+        .where('id', contractDetailId)
+        .first();
+      const contractTry = await this.knexPool
+        .from('contract_exc_try')
+        .select()
+        .where('contract_exc_detail_id', contractDetailId)
+        .first();
+      if (!contractDetail) {
+        return this.returnError(
+          'Contract Detail was not found.',
+          'Contract Detail was not found.',
+          400203,
+          400,
+          'getContractDetail',
+          next,
+        );
+      }
+      if (!contractTry) {
+        return this.returnError(
+          'Contract Try was not found.',
+          'Contract Try was not found.',
+          400203,
+          400,
+          'getContractDetail',
+          next,
+        );
+      }
+      res.locals.contractDetail = contractDetail;
+      res.locals.contractTry = contractTry;
+      return next();
+    } catch (error) {
+      return this.returnError(
+        error.message,
+        error.message,
+        500202,
+        500,
+        'getContractDetail',
+        next,
+        error,
+      );
+    }
+  };
+  handleRetryAborted = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    try {
+      if (
+        res.locals.contractDetail.state != 'error' ||
+        res.locals.contractDetail.is_aborted == 1 ||
+        res.locals.contractDetail.attempts > 0
+      ) {
+        return this.returnError(
+          'Contract Detail was prosecuted.',
+          'Contract Detail was was prosecuted.',
+          400203,
+          400,
+          'handleRetryAborted',
+          next,
+        );
+      }
+      if (
+        res.locals.contractTry.state != 'error' ||
+        res.locals.contractTry.is_aborted == 1 ||
+        res.locals.contractTry.attempts > 0
+      ) {
+        return this.returnError(
+          'Contract Try was prosecuted.',
+          'Contract Try was prosecuted.',
+          400203,
+          400,
+          'handleRetryAborted',
+          next,
+        );
+      }
+      await this.knexPool
+        .table('contract_exc_detail')
+        .update({ is_aborted: true })
+        .where('id', res.locals.contractDetail.id);
+      await this.knexPool
+        .table('contract_exc_try')
+        .update({ is_aborted: true })
+        .where('contract_exc_detail_id', res.locals.contractDetail.id);
+      return res.status(200).json({
+        code: 200000,
+        message: 'success',
+      });
+    } catch (error) {
+      return this.returnError(
+        error.message,
+        error.message,
+        500203,
+        500,
+        'handleRetryAborted',
+        next,
+        error,
+      );
+    }
+  };
   getContractExecutionDetail = async (
     req: Request,
     res: Response,
@@ -589,26 +709,21 @@ class EventControllers {
       const baseRequestEncryption = await this.encryptString(
         JSON.stringify(basicRequest),
       );
-      const receivedEvent = await this.knexPool.table('received_event').insert({
-        event_id: eventId,
-        received_request:
-          baseRequestEncryption.hexedInitVector +
-          '|.|' +
-          baseRequestEncryption.encryptedData,
-      });
       const contractDetailId = res.locals.contractDetailId;
       const contractExcDetailExist = await this.knexPool
         .table('contract_exc_detail')
         .increment('attempts', 1)
         .where('id', contractDetailId)
         .where('attempts', 0)
-        .where('state', 'error');
+        .where('state', 'error')
+        .where('is_aborted', 0);
       const contractExcTryExist = await this.knexPool
         .table('contract_exc_try')
         .increment('attempts', 1)
         .where('contract_exc_detail_id', contractDetailId)
         .where('attempts', 0)
-        .where('state', 'error');
+        .where('state', 'error')
+        .where('is_aborted', 0);
 
       if (!contractExcDetailExist || !contractExcTryExist) {
         this.sendMailToEventhosManagersOnError(
@@ -623,7 +738,13 @@ class EventControllers {
           next,
         );
       }
-
+      const receivedEvent = await this.knexPool.table('received_event').insert({
+        event_id: eventId,
+        received_request:
+          baseRequestEncryption.hexedInitVector +
+          '|.|' +
+          baseRequestEncryption.encryptedData,
+      });
       const parsedReq = {
         headers: receivedEventExistRequest?.headers,
         query: receivedEventExistRequest?.query,
@@ -1434,6 +1555,7 @@ class EventControllers {
           'contract_exc_detail.id as detailId',
           'contract_exc_detail.state',
           'contract_exc_detail.attempts as attempts',
+          'contract_exc_detail.is_aborted as isAborted',
           'contract.id as contractId',
           'contract.identifier as contractIdentifier',
           'contract.name as contractName',

@@ -35,12 +35,21 @@ export const createRouteEvent = (
     controllers.manageEvent,
   );
 
+  //retry event-contract
   authRouter.obPost(
     '/send/contract',
     ':',
     controllers.eventValidation,
     controllers.getEventContract,
     controllers.manageEventContract,
+  );
+  //retry aborted
+  authRouter.obPost(
+    '/retry/aborted',
+    'event:retry-aborted',
+    controllers.eventValidation,
+    controllers.getContractDetailAndTry,
+    controllers.handleRetryAborted,
   );
 
   authRouter.obPost('/', 'event:create', controllers.createEvent);
