@@ -58,14 +58,39 @@ describe('Create an express app and an http server', () => {
     expect(response.statusCode).toBe(200);
   });
 
+  it('Test error handle', () => {
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+    serverInitialization.errorHandle(
+      {
+        message: 'some error',
+      },
+      {} as any,
+      res as any,
+      jest.fn(),
+    );
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'some error',
+        code: 500000,
+      }),
+    );
+  });
+
   it('Fails init', async () => {
+    process.exit = jest.fn() as any;
+
     const spyOauth = jest
       .spyOn(OauthBoot.prototype, 'init')
       .mockImplementation(() => {
         return Promise.reject(new Error('Async Error'));
       });
-
-    await expect(serverInitialization.init()).rejects.toThrow();
+    await serverInitialization.init();
+    expect(process.exit).toHaveBeenCalledWith(0);
 
     spyOauth.mockRestore();
   });

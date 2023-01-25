@@ -3,7 +3,6 @@ import EventControllers from '../../../src/server/controllers/event.controller';
 import { Request, Response } from 'express';
 import knex, { Knex } from 'knex';
 import axios, { AxiosError, AxiosResponse } from 'axios';
-import { firstValueFrom } from 'rxjs';
 import ReceivedEvent from '../../../src/server/dtos/RecivedEvent.dto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
@@ -11,6 +10,12 @@ import crypto from 'crypto';
 import util from 'util';
 
 const scryptPromise = util.promisify(crypto.scrypt);
+
+const mockNext = jest.fn();
+
+jest.mock('nanoid', () => {
+  return { nanoid: () => '1234' };
+});
 
 jest.mock('axios', () => jest.fn().mockReturnValue({ data: 1, headers: 1 }));
 jest.mock('knex', () => {
@@ -68,16 +73,7 @@ describe('Event routes work accordingly', () => {
     res.locals = {};
     return res;
   };
-
-  it('Creates an axios observable from a json file', async () => {
-    const eventControllers = new EventControllers(knex({}), encryptKey);
-    const obs = eventControllers.createAxiosObservable({
-      url: 'url',
-    });
-    (axios as unknown as jest.Mock).mockResolvedValueOnce({ data: 'ok' });
-    await expect(firstValueFrom(obs)).resolves.toEqual({ data: 'ok' });
-  });
-
+  //----------------------------------|||||||||||---------------------------------------
   describe('Event validation middleware works correctly', () => {
     const mockKnex = () => {
       const knex = {} as Knex;
@@ -93,28 +89,33 @@ describe('Event routes work accordingly', () => {
 
     const eventControllers = new EventControllers(mockKnex(), encryptKey);
 
+    eventControllers.returnError = jest.fn();
+
     it('Event validation middleware, correct message when no query is send', async () => {
       const mockedNext = jest.fn();
 
       const mockReq = () => {
         const req: Request = {} as Request;
         req.query = {};
+        req.headers = {};
         return req;
       };
 
       const mockResponse = mockRes();
-
+      eventControllers.returnError = jest.fn();
       await eventControllers.eventValidation(
         mockReq(),
         mockResponse,
         mockedNext,
       );
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        code: 400020,
-        message:
-          'Either the access key or the identifier for the event was not send.',
-      });
+      expect(eventControllers.returnError).toHaveBeenCalledWith(
+        'Either the access key or the identifier for the event was not send.',
+        'Either the access key or the identifier for the event was not send.',
+        400201,
+        400,
+        'eventValidation',
+        mockedNext,
+      );
     });
 
     it('Event validation middleware, correct message when producer event not found', async () => {
@@ -140,17 +141,22 @@ describe('Event routes work accordingly', () => {
 
       eventControllers.knexPool = localKnexMock;
 
+      eventControllers.returnError = jest.fn();
+
       await eventControllers.eventValidation(
         mockReq(),
         mockResponse,
         mockedNext,
       );
 
-      expect(mockResponse.status).toHaveBeenCalledWith(404);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        code: 400024,
-        message: `The event some does not exist.`,
-      });
+      expect(eventControllers.returnError).toHaveBeenCalledWith(
+        'The event some does not exist.',
+        'The event some does not exist.',
+        400202,
+        400,
+        'eventValidation',
+        mockedNext,
+      );
     });
 
     it('Event validation middleware, correct message when producer revoked', async () => {
@@ -183,17 +189,22 @@ describe('Event routes work accordingly', () => {
 
       eventControllers.knexPool = localKnexMock;
 
+      eventControllers.returnError = jest.fn();
+
       await eventControllers.eventValidation(
         mockReq(),
         mockResponse,
         mockedNext,
       );
 
-      expect(mockResponse.status).toHaveBeenCalledWith(403);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        code: 400023,
-        message: `The client access has been revoked.`,
-      });
+      expect(eventControllers.returnError).toHaveBeenCalledWith(
+        'The client access has been revoked.',
+        'The client access has been revoked.',
+        403201,
+        403,
+        'eventValidation',
+        mockedNext,
+      );
     });
 
     it('Event validation middleware, correct message when client does not exist', async () => {
@@ -220,17 +231,22 @@ describe('Event routes work accordingly', () => {
 
       eventControllers.knexPool = localKnexMock;
 
+      eventControllers.returnError = jest.fn();
+
       await eventControllers.eventValidation(
         mockReq(),
         mockResponse,
         mockedNext,
       );
 
-      expect(mockResponse.status).toHaveBeenCalledWith(404);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        code: 400004,
-        message: `The client does not exist.`,
-      });
+      expect(eventControllers.returnError).toHaveBeenCalledWith(
+        'The client does not exist.',
+        'The client does not exist.',
+        404201,
+        404,
+        'eventValidation',
+        mockedNext,
+      );
     });
 
     it('Event validation middleware, correct message when client has access_token', async () => {
@@ -314,16 +330,23 @@ describe('Event routes work accordingly', () => {
 
       eventControllers.knexPool = localKnexMock;
 
+      eventControllers.returnError = jest.fn();
+
       await eventControllers.eventValidation(
         mockReq(),
         mockResponse,
         mockedNext,
       );
 
-      expect(mockResponse.status).toHaveBeenCalled();
-      expect(jwtSpy).toHaveBeenCalled();
+      expect(eventControllers.returnError).toHaveBeenCalledWith(
+        'Incorrect token',
+        'Incorrect token',
+        401202,
+        401,
+        'eventValidation',
+        mockedNext,
+      );
 
-      expect(mockResponse.locals.eventId).toBe(undefined);
       jwtSpy.mockRestore();
     });
 
@@ -362,23 +385,29 @@ describe('Event routes work accordingly', () => {
 
       eventControllers.knexPool = localKnexMock;
 
+      eventControllers.returnError = jest.fn();
+
       await eventControllers.eventValidation(
         mockReq(),
         mockResponse,
         mockedNext,
       );
 
-      expect(mockResponse.status).toHaveBeenCalledWith(401);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        code: 400001,
-        message: `Incorrect token`,
-      });
+      expect(eventControllers.returnError).toHaveBeenCalledWith(
+        'Incorrect token',
+        'Incorrect token',
+        401201,
+        401,
+        'eventValidation',
+        mockedNext,
+      );
 
       expect(bcryptSpy).toHaveBeenCalled();
 
       bcryptSpy.mockRestore();
     });
-
+    //--------------------   |||||<<<<>>>>>>   ----------------------------------------------------------------
+    // eslint-disable-next-line jest/expect-expect
     it('Error 500', async () => {
       const mockedNext = jest.fn();
 
@@ -388,6 +417,7 @@ describe('Event routes work accordingly', () => {
           'event-identifier': 'new_profesor',
           'access-key': 'asecurekey',
         };
+        req.headers = {};
         return req;
       };
 
@@ -398,22 +428,21 @@ describe('Event routes work accordingly', () => {
       localKnexMock.where = jest
         .fn()
         .mockReturnValue(localKnexMock)
-        .mockRejectedValue({ error: 'an error' });
+        .mockImplementation(() => {
+          throw new Error();
+        });
       eventControllers.knexPool = localKnexMock;
-
-      await eventControllers.eventValidation(
+      eventControllers.returnError = jest.fn();
+      const r = await eventControllers.eventValidation(
         mockReq(),
         mockResponse,
         mockedNext,
       );
-
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        code: 500000,
-        message: 'Server Internal Error',
-      });
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
+      expect(eventControllers.returnError).toHaveBeenCalled();
     });
   });
+
+  //------------------------------------------------|||||||||||||||||------------------------------------
 
   describe('Gets the contract list for an event', () => {
     const eventControllers = new EventControllers(knex({}), encryptKey);
@@ -430,17 +459,20 @@ describe('Event routes work accordingly', () => {
       const mockResponse = mockRes();
 
       mockResponse.locals.eventId = undefined;
-
+      eventControllers.returnError = jest.fn();
       await eventControllers.getEventContracts(
         mockReq(),
         mockResponse,
         mockedNext,
       );
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        code: 400020,
-        message: 'Event Id was not send.',
-      });
+      expect(eventControllers.returnError).toHaveBeenCalledWith(
+        'Event Id was not send.',
+        'Event Id was not send.',
+        400203,
+        400,
+        'getEventContracts',
+        mockedNext,
+      );
     });
     it('No contracts for an event', async () => {
       const mockedKnex = {
@@ -477,6 +509,8 @@ describe('Event routes work accordingly', () => {
         mockedKnex,
         encryptKey,
       );
+
+      eventControllers.returnError = jest.fn();
 
       await eventControllersInternal.getEventContracts(
         mockReq(),
@@ -538,6 +572,8 @@ describe('Event routes work accordingly', () => {
         encryptKey,
       );
 
+      eventControllers.returnError = jest.fn();
+
       await eventControllersInternal.getEventContracts(
         mockReq(),
         mockResponse,
@@ -567,11 +603,8 @@ describe('Event routes work accordingly', () => {
         mockResponse,
         mockedNext,
       );
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        code: 500000,
-        message: 'Server Internal Error',
-      });
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
+
+      expect(eventControllers.returnError).toHaveBeenCalled();
     });
   });
 
@@ -622,7 +655,13 @@ describe('Event routes work accordingly', () => {
         knexMock as any,
         encryptKey,
       );
-      await eventControllers.listReceivedEvents(mockReq(), mockResponse);
+
+      eventControllers.returnError = jest.fn();
+      await eventControllers.listReceivedEvents(
+        mockReq(),
+        mockResponse,
+        mockNext,
+      );
       expect(knexMock).toHaveBeenCalledTimes(3);
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -680,7 +719,13 @@ describe('Event routes work accordingly', () => {
         knexMock as any,
         encryptKey,
       );
-      await eventControllers.listReceivedEvents(mockReq(), mockResponse);
+
+      eventControllers.returnError = jest.fn();
+      await eventControllers.listReceivedEvents(
+        mockReq(),
+        mockResponse,
+        mockNext,
+      );
       expect(whereMock).toHaveBeenCalledTimes(6);
     });
 
@@ -722,8 +767,14 @@ describe('Event routes work accordingly', () => {
         knexMock as any,
         encryptKey,
       );
-      await eventControllers.listReceivedEvents(mockReq(), mockResponse);
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
+
+      eventControllers.returnError = jest.fn();
+      await eventControllers.listReceivedEvents(
+        mockReq(),
+        mockResponse,
+        mockNext,
+      );
+      expect(eventControllers.returnError).toHaveBeenCalled();
     });
   });
 
@@ -804,13 +855,15 @@ describe('Event routes work accordingly', () => {
         knexMock as any,
         encryptKey,
       );
+
+      eventControllers.returnError = jest.fn();
       eventControllers.getVariables = jest.fn().mockReturnValue('goodDATA');
       eventControllers.decryptString = jest
         .fn()
         .mockReturnValue(
           '{"headers": {"X": 1}, "params": {"X": 1}, "data": {"X": 1}}',
         );
-      await eventControllers.manageEvent(req, res);
+      await eventControllers.manageEvent(req, res, mockNext);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         code: 20000,
@@ -894,13 +947,15 @@ describe('Event routes work accordingly', () => {
         knexMock as any,
         encryptKey,
       );
+
+      eventControllers.returnError = jest.fn();
       eventControllers.getVariables = jest.fn().mockReturnValue('goodDATA');
       eventControllers.decryptString = jest
         .fn()
         .mockReturnValue(
           '{"headers": {"X": 1}, "params": {"X": 1}, "data": {}}',
         );
-      await eventControllers.manageEvent(req, res);
+      await eventControllers.manageEvent(req, res, mockNext);
       expect(eventControllers.decryptString).toHaveBeenCalledTimes(1);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
@@ -916,6 +971,8 @@ describe('Event routes work accordingly', () => {
         knexMock as any,
         encryptKey,
       );
+
+      eventControllers.returnError = jest.fn();
 
       const eventContracts = [
         { contract: { order: 1 } },
@@ -939,6 +996,8 @@ describe('Event routes work accordingly', () => {
         encryptKey,
       );
 
+      eventControllers.returnError = jest.fn();
+
       const response = { message: 'error message', error: true };
 
       const logger = {
@@ -957,6 +1016,8 @@ describe('Event routes work accordingly', () => {
         knexMock as any,
         encryptKey,
       );
+
+      eventControllers.returnError = jest.fn();
 
       const response = { message: 'success message' };
 
@@ -993,12 +1054,17 @@ describe('Event routes work accordingly', () => {
         knexMock as any,
         encryptKey,
       );
-      await eventControllers.manageEvent(req, res);
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        code: 400020,
-        message: 'Event Id or Event Contract List was not send.',
-      });
+
+      eventControllers.returnError = jest.fn();
+      await eventControllers.manageEvent(req, res, mockNext);
+      expect(eventControllers.returnError).toHaveBeenCalledWith(
+        'Event Id or Event Contract List was not send.',
+        'Event Id or Event Contract List was not send.',
+        400204,
+        400,
+        'manageEvent',
+        mockNext,
+      );
     });
 
     it('Manage event correct not a number for eventId', async () => {
@@ -1074,12 +1140,17 @@ describe('Event routes work accordingly', () => {
         knexMock as any,
         encryptKey,
       );
-      await eventControllers.manageEvent(req, res);
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        code: 400020,
-        message: 'Event Id is not a number.',
-      });
+
+      eventControllers.returnError = jest.fn();
+      await eventControllers.manageEvent(req, res, mockNext);
+      expect(eventControllers.returnError).toHaveBeenCalledWith(
+        'Event Id is not a number.',
+        'Event Id is not a number.',
+        400205,
+        400,
+        'manageEvent',
+        mockNext,
+      );
     });
 
     it('Manage event correct not an array', async () => {
@@ -1108,12 +1179,17 @@ describe('Event routes work accordingly', () => {
         knexMock as any,
         encryptKey,
       );
-      await eventControllers.manageEvent(req, res);
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        code: 400020,
-        message: 'Event Contract is not an array.',
-      });
+
+      eventControllers.returnError = jest.fn();
+      await eventControllers.manageEvent(req, res, mockNext);
+      expect(eventControllers.returnError).toHaveBeenCalledWith(
+        'Event Contract is not an array.',
+        'Event Contract is not an array.',
+        400206,
+        400,
+        'manageEvent',
+        mockNext,
+      );
     });
 
     it('Manage event fails', async () => {
@@ -1189,11 +1265,261 @@ describe('Event routes work accordingly', () => {
         knexMock as any,
         encryptKey,
       );
-      await eventControllers.manageEvent(req, res);
-      expect(res.status).toHaveBeenCalledWith(500);
+
+      eventControllers.returnError = jest.fn();
+      await eventControllers.manageEvent(req, res, mockNext);
+      expect(eventControllers.returnError).toHaveBeenCalled();
     });
   });
+  // NEW TEST TO
+  describe('Get Event Contract Flow', () => {
+    it('Get event contract - correct', async () => {
+      const mockedNext = jest.fn();
+      const mockReq = () => {
+        const req: Request = {} as Request;
+        req.query = {
+          'contract-id': '10',
+        };
+        req.headers = {};
+        req.body = {
+          contractDetailId: 1,
+          receivedEventId: 2,
+        };
+        req.method = 'get';
+        req.protocol = 'https';
+        req.get = jest.fn().mockReturnValue('host');
+        req.originalUrl = 'original.www';
+        return req;
+      };
+      const mockRes = () => {
+        const res = {} as Response;
+        res.locals = {
+          eventId: 10,
+        };
+        return res;
+      };
+      const knexMock = {
+        where: jest.fn().mockReturnThis(),
+        table: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        from: jest.fn().mockReturnThis(),
+        join: jest.fn().mockReturnThis(),
+      } as any as Knex;
+      const eventControllers = new EventControllers(knexMock, encryptKey);
+      await eventControllers.getEventContract(mockReq(), mockRes(), mockedNext);
+      expect(mockedNext.mock.calls.length).toBe(1);
+      expect(knexMock.from).toHaveBeenCalledWith('contract');
+      expect(knexMock.join).toHaveBeenCalledWith(
+        'event',
+        'contract.event_id',
+        'event.id',
+      );
+      expect(knexMock.join).toHaveBeenCalledWith(
+        'action',
+        'contract.action_id',
+        'action.id',
+      );
+      expect(knexMock.join).toHaveBeenCalledWith(
+        'action_security',
+        'action.id',
+        'action_security.action_id',
+      );
+    });
+    it('Get event contract - without received event id', async () => {
+      const mockedNext = jest.fn();
 
+      const mockReq = () => {
+        const req: Request = {} as Request;
+        req.query = { 'contract-id': '10' };
+        req.body = { contractDetailId: 15 };
+        return req;
+      };
+
+      const mockResponse = mockRes();
+      mockResponse.locals = { eventId: 10 };
+      const eventControllers = new EventControllers(knex({}), encryptKey);
+      eventControllers.returnError = jest.fn();
+      await eventControllers.getEventContract(
+        mockReq(),
+        mockResponse,
+        mockedNext,
+      );
+      expect(eventControllers.returnError).toHaveBeenCalledWith(
+        'Received event Id was not send.',
+        'Received event Id was not send.',
+        400203,
+        400,
+        'getEventContract',
+        mockedNext,
+      );
+    });
+    it('Get event contract - without event id', async () => {
+      const mockedNext = jest.fn();
+
+      const mockReq = () => {
+        const req: Request = {} as Request;
+        req.query = { 'contract-id': '10' };
+        req.body = { contractDetailId: 15, receivedEventId: 1 };
+        return req;
+      };
+
+      const mockResponse = mockRes();
+      const eventControllers = new EventControllers(knex({}), encryptKey);
+      eventControllers.returnError = jest.fn();
+      await eventControllers.getEventContract(
+        mockReq(),
+        mockResponse,
+        mockedNext,
+      );
+      expect(eventControllers.returnError).toHaveBeenCalledWith(
+        'Event Id was not send.',
+        'Event Id was not send.',
+        400203,
+        400,
+        'getEventContract',
+        mockedNext,
+      );
+    });
+    it('Get event contract - without contract detail id', async () => {
+      const mockedNext = jest.fn();
+
+      const mockReq = () => {
+        const req: Request = {} as Request;
+        req.query = { 'contract-id': '1' };
+        req.body = { receivedEventId: 10 };
+        return req;
+      };
+
+      const mockResponse = mockRes();
+      mockResponse.locals = { eventId: 10 };
+      const eventControllers = new EventControllers(knex({}), encryptKey);
+      eventControllers.returnError = jest.fn();
+      await eventControllers.getEventContract(
+        mockReq(),
+        mockResponse,
+        mockedNext,
+      );
+      expect(eventControllers.returnError).toHaveBeenCalledWith(
+        'Contract detail Id was not send.',
+        'Contract detail Id was not send.',
+        400203,
+        400,
+        'getEventContract',
+        mockedNext,
+      );
+    });
+    it('Get event contract - Error 500', async () => {
+      const mockedNext = jest.fn();
+      const eventControllers = new EventControllers(knex({}), encryptKey);
+      const mockReq = () => {
+        const req: Request = {} as Request;
+        req.query = {};
+        return req;
+      };
+
+      const mockResponse = mockRes();
+
+      mockResponse.locals.eventId = 1;
+      eventControllers.returnError = jest.fn();
+
+      await eventControllers.getEventContract(
+        mockReq(),
+        mockResponse,
+        mockedNext,
+      );
+      expect(eventControllers.returnError).toHaveBeenCalled();
+      expect(eventControllers.returnError).toHaveBeenCalledTimes(1);
+    });
+  });
+  describe('Manage Event Contract Flow', () => {
+    it('Manage Event Contract - without event id', async () => {
+      const mockedNext = jest.fn();
+
+      const mockReq = () => {
+        const req: Request = {} as Request;
+        return req;
+      };
+
+      const mockResponse = mockRes();
+      mockResponse.locals = {
+        eventContract: {},
+        contractDetailId: 1,
+      };
+      const eventControllers = new EventControllers(knex({}), encryptKey);
+      eventControllers.returnError = jest.fn();
+      await eventControllers.manageEventContract(
+        mockReq(),
+        mockResponse,
+        mockedNext,
+      );
+      expect(eventControllers.returnError).toHaveBeenCalledWith(
+        'Event Id or Event Contract List was not send.',
+        'Event Id or Event Contract List was not send.',
+        400204,
+        400,
+        'manageEventContract',
+        mockedNext,
+      );
+    });
+    it('Manage Event Contract - without event contract', async () => {
+      const mockedNext = jest.fn();
+
+      const mockReq = () => {
+        const req: Request = {} as Request;
+        return req;
+      };
+
+      const mockResponse = mockRes();
+      mockResponse.locals = {
+        eventId: 1,
+        contractDetailId: 1,
+      };
+      const eventControllers = new EventControllers(knex({}), encryptKey);
+      eventControllers.returnError = jest.fn();
+      await eventControllers.manageEventContract(
+        mockReq(),
+        mockResponse,
+        mockedNext,
+      );
+      expect(eventControllers.returnError).toHaveBeenCalledWith(
+        'Event Id or Event Contract List was not send.',
+        'Event Id or Event Contract List was not send.',
+        400204,
+        400,
+        'manageEventContract',
+        mockedNext,
+      );
+    });
+    it('Manage Event Contract - without contract detail id', async () => {
+      const mockedNext = jest.fn();
+
+      const mockReq = () => {
+        const req: Request = {} as Request;
+        return req;
+      };
+
+      const mockResponse = mockRes();
+      mockResponse.locals = {
+        eventId: 1,
+        eventConract: {},
+      };
+      const eventControllers = new EventControllers(knex({}), encryptKey);
+      eventControllers.returnError = jest.fn();
+      await eventControllers.manageEventContract(
+        mockReq(),
+        mockResponse,
+        mockedNext,
+      );
+      expect(eventControllers.returnError).toHaveBeenCalledWith(
+        'Event Id or Event Contract List was not send.',
+        'Event Id or Event Contract List was not send.',
+        400204,
+        400,
+        'manageEventContract',
+        mockedNext,
+      );
+    });
+  });
   it('Handle message reading no error', () => {
     const eventControllers = new EventControllers({} as any, encryptKey);
     eventControllers.executeMultipleContracts = jest.fn();
@@ -1219,7 +1545,7 @@ describe('Event routes work accordingly', () => {
     const messageObj = { mock: 1 } as any;
 
     eventControllers.handleMessageReading(
-      null,
+      null as any,
       mockRawMessage,
       configuration,
       client,
@@ -1272,15 +1598,71 @@ describe('Event routes work accordingly', () => {
 
   it('Error function', () => {
     const knex = {} as any as Knex;
-    const res = mockRes();
-    const error = {
-      sqlState: 1,
-    };
+    const eventController = new EventControllers(knex, encryptKey);
 
-    const actionController = new EventControllers(knex, encryptKey);
-    actionController.returnError(error, res);
+    const nextErrorMock = jest.fn();
 
-    expect(res.status).toBeCalledWith(501);
+    eventController.returnError(
+      'some error',
+      'some error',
+      500000,
+      500,
+      'test',
+      nextErrorMock,
+    );
+
+    expect(nextErrorMock).toBeCalledWith({
+      message: 'some error',
+      statusCode: 500,
+      errorCode: 500000,
+      onFunction: 'test',
+      onFile: 'event.controller.ts',
+      logMessage: 'some error',
+      errorObject: undefined,
+      originalError: undefined,
+    });
+
+    eventController.returnError(
+      'some error',
+      'some error',
+      500000,
+      500,
+      'test',
+      nextErrorMock,
+      { response: true },
+    );
+
+    expect(nextErrorMock).toBeCalledWith({
+      message: 'some error',
+      statusCode: 500,
+      errorCode: 500000,
+      onFunction: 'test',
+      onFile: 'event.controller.ts',
+      logMessage: 'some error',
+      errorObject: true,
+      originalError: undefined,
+    });
+
+    eventController.returnError(
+      'some error',
+      'some error',
+      500000,
+      500,
+      'test',
+      nextErrorMock,
+      { sqlState: true },
+    );
+
+    expect(nextErrorMock).toBeCalledWith({
+      message: 'Data base error. some error',
+      statusCode: 500,
+      errorCode: 500000,
+      onFunction: 'test',
+      onFile: 'event.controller.ts',
+      logMessage: 'some error',
+      errorObject: undefined,
+      originalError: { sqlState: true },
+    });
   });
 
   it('Handles decoded data', () => {
@@ -1328,7 +1710,7 @@ describe('Event routes work accordingly', () => {
     } as any;
 
     eventControllers.clientSubscriptionHandler(
-      null,
+      null as any,
       message,
       configuration,
       client,
@@ -1408,9 +1790,16 @@ describe('Event routes work accordingly', () => {
       id: 3,
     };
     const eventControllers = new EventControllers({} as Knex, encryptKey);
+    eventControllers.returnError = jest.fn();
     eventControllers.handleDecodeData(decode, client, res, nextFunction, event);
-    expect(nextFunction).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(401);
+    expect(eventControllers.returnError).toHaveBeenCalledWith(
+      'Incorrect token',
+      'Incorrect token',
+      401202,
+      401,
+      'handleDecodeData',
+      nextFunction,
+    );
   });
 
   it('Gets contract execution detail', async () => {
@@ -1428,7 +1817,7 @@ describe('Event routes work accordingly', () => {
     const eventControllers = new EventControllers(knexMock, encryptKey);
     eventControllers.decryptString = jest.fn().mockReturnValue('{}');
     const res = mockRes();
-    await eventControllers.getContractExecutionDetail(req, res);
+    await eventControllers.getContractExecutionDetail(req, res, mockNext);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalled();
   });
@@ -1448,7 +1837,7 @@ describe('Event routes work accordingly', () => {
     const eventControllers = new EventControllers(knexMock, encryptKey);
     eventControllers.decryptString = jest.fn().mockReturnValue('{}');
     const res = mockRes();
-    await eventControllers.getContractExecutionDetail(req, res);
+    await eventControllers.getContractExecutionDetail(req, res, mockNext);
     expect(res.status).not.toHaveBeenCalledWith(200);
   });
 
@@ -1476,7 +1865,7 @@ describe('Event routes work accordingly', () => {
     } as any as Knex;
 
     const eventControllers = new EventControllers(knex, encryptKey);
-    await eventControllers.getEvents(req, res);
+    await eventControllers.getEvents(req, res, mockNext);
 
     expect(knex.table).toHaveBeenCalledWith('event');
     expect(knex.offset).toHaveBeenCalledWith(0);
@@ -1507,7 +1896,7 @@ describe('Event routes work accordingly', () => {
     } as any as Knex;
 
     const eventControllers = new EventControllers(knex, encryptKey);
-    await eventControllers.getEvents(req, res);
+    await eventControllers.getEvents(req, res, mockNext);
 
     expect(knex.andWhere).toHaveBeenCalledTimes(4);
   });
@@ -1533,7 +1922,7 @@ describe('Event routes work accordingly', () => {
     } as any as Knex;
 
     const eventControllers = new EventControllers(knex, encryptKey);
-    await eventControllers.getEvents(req, res);
+    await eventControllers.getEvents(req, res, mockNext);
 
     expect(res.status).not.toHaveBeenCalledWith(200);
   });
@@ -1556,7 +1945,7 @@ describe('Event routes work accordingly', () => {
     const res = mockRes();
 
     const eventControllers = new EventControllers(knexMock, encryptKey);
-    await eventControllers.deleteEvent(req, res);
+    await eventControllers.deleteEvent(req, res, mockNext);
 
     expect(knexMock.table).toBeCalledWith('contract');
     expect(knexMock.table).toBeCalledWith('event');
@@ -1687,7 +2076,7 @@ describe('Event routes work accordingly', () => {
         .mockReturnValue(
           '{"headers": {"X": 1}, "params": {"X": 1}, "data": {"X": 1}}',
         );
-      await eventControllers.manageEvent(req, res);
+      await eventControllers.manageEvent(req, res, mockNext);
 
       expect(client.send).toHaveBeenCalled();
       expect(frame.end).toHaveBeenCalled();
@@ -1715,15 +2104,19 @@ describe('Event routes work accordingly', () => {
     const res = mockRes();
 
     const eventControllers = new EventControllers(knexMock, encryptKey);
-    await eventControllers.deleteEvent(req, res);
+    eventControllers.returnError = jest.fn();
+    await eventControllers.deleteEvent(req, res, mockNext);
 
     expect(knexMock.table).toBeCalledWith('contract');
 
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({
-      code: 400500,
-      message: 'Event has active contracts',
-    });
+    expect(eventControllers.returnError).toHaveBeenCalledWith(
+      'Event has active contracts',
+      'Event has active contracts',
+      400207,
+      400,
+      'manageEvent',
+      mockNext,
+    );
   });
 
   it('Delete event fails', async () => {
@@ -1744,7 +2137,7 @@ describe('Event routes work accordingly', () => {
     const res = mockRes();
 
     const eventControllers = new EventControllers(knexMock, encryptKey);
-    await eventControllers.deleteEvent(req, res);
+    await eventControllers.deleteEvent(req, res, mockNext);
 
     expect(res.status).not.toHaveBeenCalledWith(201);
   });
@@ -1768,7 +2161,7 @@ describe('Event routes work accordingly', () => {
     const res = mockRes();
 
     const eventControllers = new EventControllers(knexMock, encryptKey);
-    await eventControllers.updateEvent(req, res);
+    await eventControllers.updateEvent(req, res, mockNext);
 
     expect(knexMock.table).toHaveBeenCalledWith('event');
     expect(knexMock.update).toHaveBeenCalledWith({
@@ -1803,7 +2196,7 @@ describe('Event routes work accordingly', () => {
     const res = mockRes();
 
     const eventControllers = new EventControllers(knexMock, encryptKey);
-    await eventControllers.updateEvent(req, res);
+    await eventControllers.updateEvent(req, res, mockNext);
 
     expect(res.status).not.toHaveBeenLastCalledWith(201);
   });
@@ -1829,12 +2222,12 @@ describe('Event routes work accordingly', () => {
     const res = mockRes();
 
     const eventControllers = new EventControllers(knexMock, encryptKey);
-    await eventControllers.createEvent(req, res);
+    await eventControllers.createEvent(req, res, mockNext);
 
     expect(knexMock.table).toHaveBeenCalledWith('event');
     expect(knexMock.insert).toHaveBeenCalledWith({
       system_id: 1,
-      identifier: 'Identifier',
+      identifier: 'Identifier-1234',
       name: 'new name',
       operation: 'new',
       description: 'Updated description',
@@ -1864,7 +2257,7 @@ describe('Event routes work accordingly', () => {
     const res = mockRes();
 
     const eventControllers = new EventControllers(knexMock, encryptKey);
-    await eventControllers.createEvent(req, res);
+    await eventControllers.createEvent(req, res, mockNext);
 
     expect(res.status).not.toHaveBeenCalledWith(201);
   });
@@ -1883,7 +2276,7 @@ describe('Event routes work accordingly', () => {
       baseSearchResult,
       'id',
       'similarField',
-    );
+    ) as any;
 
     expect(joinResult[2]).toBe(undefined);
     expect(joinResult.length).toBe(2);
@@ -1914,7 +2307,7 @@ describe('Event routes work accordingly', () => {
 
     const eventControllers = new EventControllers(knexMock, encryptKey);
     eventControllers.decryptString = jest.fn().mockReturnValue('{"x": 1}');
-    await eventControllers.getReceivedEventDetails(req, res);
+    await eventControllers.getReceivedEventDetails(req, res, mockNext);
 
     expect(knexMock.table).toHaveBeenCalledWith('contract_exc_detail');
     expect(knexMock.table).toHaveBeenCalledWith('received_event');
@@ -1932,6 +2325,8 @@ describe('Event routes work accordingly', () => {
     expect(knexMock.select).toHaveBeenCalledWith(
       'contract_exc_detail.id as detailId',
       'contract_exc_detail.state',
+      'contract_exc_detail.attempts as attempts',
+      'contract_exc_detail.is_aborted as isAborted',
       'contract.id as contractId',
       'contract.identifier as contractIdentifier',
       'contract.name as contractName',
@@ -1981,7 +2376,7 @@ describe('Event routes work accordingly', () => {
 
     const eventControllers = new EventControllers(knexMock, encryptKey);
     eventControllers.decryptString = jest.fn().mockReturnValue('{"x": 1}');
-    await eventControllers.getReceivedEventDetails(req, res);
+    await eventControllers.getReceivedEventDetails(req, res, mockNext);
 
     expect(res.status).not.toHaveBeenCalledWith(200);
   });

@@ -5,6 +5,10 @@ import crypto from 'crypto';
 
 const knex = {} as any as Knex;
 
+jest.mock('nanoid', () => {
+  return { nanoid: () => '1234' };
+});
+
 const mockSecureExpress = {
   obPost: jest.fn(),
   obGet: jest.fn(),
@@ -31,7 +35,7 @@ describe('Event routes works', () => {
     );
 
     expect(mockSecureExpress.obPost).toHaveBeenCalledWith(
-      '/received',
+      '/send',
       ':',
       expect.anything(),
       expect.anything(),
@@ -63,5 +67,13 @@ describe('Event routes works', () => {
     );
 
     expect(actionRouteResult.route).toBe('/event');
+
+    expect(mockSecureExpress.obPost).toHaveBeenCalledWith(
+      '/send/contract',
+      ':',
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
   });
 });

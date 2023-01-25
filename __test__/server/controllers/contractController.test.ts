@@ -3,6 +3,10 @@ import controllerHelpers from '../../../src/server/controllers/helpers/controlle
 import { Request, Response } from 'express';
 import { Knex } from 'knex';
 
+jest.mock('nanoid', () => {
+  return { nanoid: () => '1234' };
+});
+
 const mockRes = () => {
   const res: Response = {} as Response;
   res.status = jest.fn().mockReturnValue(res);
@@ -10,6 +14,8 @@ const mockRes = () => {
   res.locals = {};
   return res;
 };
+
+const mockNext = jest.fn();
 
 describe('Controller helpers', () => {
   it('Test get pagination data', () => {
@@ -37,16 +43,19 @@ describe('Contract controller works', () => {
 
     const knex = {
       table: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnValue([]),
       insert: jest.fn().mockResolvedValue([1]),
     } as any as Knex;
 
     const contractController = new ContractController(knex);
-    await contractController.createContract(req, res);
+
+    contractController.returnError = jest.fn();
+    await contractController.createContract(req, res, mockNext);
 
     expect(knex.table).toHaveBeenCalledWith('contract');
     expect(knex.insert).toHaveBeenCalledWith({
       name: 'contract name',
-      identifier: 'contract_identifier',
+      identifier: 'contract_identifier-1234',
       event_id: 1,
       action_id: 2,
     });
@@ -57,6 +66,45 @@ describe('Contract controller works', () => {
       message: 'success',
       content: { actionId: 1 },
     });
+  });
+
+  it('Create a contract identifier already exist', async () => {
+    const req = {
+      body: {
+        eventId: 1,
+        actionId: 2,
+        name: 'contract name',
+        identifier: 'contract_identifier',
+      },
+    } as any as Request;
+
+    const res = mockRes();
+
+    const knex = {
+      table: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnValue([1]),
+      insert: jest.fn().mockResolvedValue([1]),
+    } as any as Knex;
+
+    const contractController = new ContractController(knex);
+
+    contractController.returnError = jest.fn();
+    await contractController.createContract(req, res, mockNext);
+
+    expect(knex.table).toHaveBeenCalledWith('contract');
+    expect(knex.where).toHaveBeenCalledWith(
+      'identifier',
+      'contract_identifier',
+    );
+
+    expect(contractController.returnError).toHaveBeenCalledWith(
+      'Contract identifier already exist',
+      'Contract identifier already exist',
+      400101,
+      400,
+      'createContract',
+      mockNext,
+    );
   });
 
   it('Create a contract fails', async () => {
@@ -77,10 +125,11 @@ describe('Contract controller works', () => {
     } as any as Knex;
 
     const contractController = new ContractController(knex);
-    await contractController.createContract(req, res);
 
-    expect(res.status).not.toHaveBeenCalledWith(201);
-    expect(res.json).toHaveBeenCalled();
+    contractController.returnError = jest.fn();
+    await contractController.createContract(req, res, mockNext);
+
+    expect(contractController.returnError).toHaveBeenCalled();
   });
 
   it('Get contracts works', async () => {
@@ -109,7 +158,7 @@ describe('Contract controller works', () => {
 
     const contractController = new ContractController(knexFunction as any);
 
-    await contractController.getContracts(req, res);
+    await contractController.getContracts(req, res, mockNext);
 
     expect(knex.offset).toHaveBeenCalledWith(0);
     expect(knex.select).toHaveBeenCalledWith(
@@ -123,6 +172,7 @@ describe('Contract controller works', () => {
       'consumerSystem.name as consumerName',
       'event.identifier as eventIdentifier',
       'action.identifier as actionIdentifier',
+      'mail_recipients_on_error as mailRecipientsOnError',
     );
     expect(knex.where).toHaveBeenCalledWith('deleted', false);
     expect(knex.count).toHaveBeenCalled();
@@ -147,11 +197,35 @@ describe('Contract controller works', () => {
     } as any as Knex;
     const contractController = new ContractController(knex);
 
-    await contractController.getContractsFromEvent(req, res);
+    contractController.returnError = jest.fn();
+
+    await contractController.getContractsFromEvent(req, res, mockNext);
 
     expect(knex.table).toHaveBeenCalledWith('contract');
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalled();
+  });
+
+  it('Get contracts from events fails', async () => {
+    const req = {
+      params: {
+        eventId: 10,
+      },
+    } as any as Request;
+    const res = mockRes();
+
+    const knex = {
+      table: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockRejectedValue(new Error('some error')),
+    } as any as Knex;
+    const contractController = new ContractController(knex);
+
+    contractController.returnError = jest.fn();
+
+    await contractController.getContractsFromEvent(req, res, mockNext);
+
+    expect(contractController.returnError).toHaveBeenCalled();
   });
 
   it('Edits contracts orders', async () => {
@@ -169,10 +243,33 @@ describe('Contract controller works', () => {
     } as any as Knex;
     const contractController = new ContractController(knex);
 
-    await contractController.editContractOrders(req, res);
+    contractController.returnError = jest.fn();
+
+    await contractController.editContractOrders(req, res, mockNext);
     expect(knex.table).toHaveBeenCalledWith('contract');
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalled();
+  });
+
+  it('Edits contracts orders fails', async () => {
+    const req = {
+      body: {
+        orders: [{ contractId: 1, order: 1 }],
+      },
+    } as any as Request;
+    const res = mockRes();
+
+    const knex = {
+      table: jest.fn().mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
+      where: jest.fn().mockRejectedValue(new Error('some error')),
+    } as any as Knex;
+    const contractController = new ContractController(knex);
+
+    contractController.returnError = jest.fn();
+
+    await contractController.editContractOrders(req, res, mockNext);
+    expect(contractController.returnError).toHaveBeenCalled();
   });
 
   it('Get contracts fails', async () => {
@@ -201,7 +298,7 @@ describe('Contract controller works', () => {
 
     const contractController = new ContractController(knexFunction as any);
 
-    await contractController.getContracts(req, res);
+    await contractController.getContracts(req, res, mockNext);
 
     expect(res.status).not.toHaveBeenCalledWith(200);
   });
@@ -227,7 +324,9 @@ describe('Contract controller works', () => {
 
     const contractController = new ContractController(knex);
 
-    await contractController.updateContract(req, res);
+    contractController.returnError = jest.fn();
+
+    await contractController.updateContract(req, res, mockNext);
 
     expect(knex.table).toHaveBeenCalledWith('contract');
     expect(knex.update).toHaveBeenCalledWith({
@@ -265,17 +364,11 @@ describe('Contract controller works', () => {
 
     const contractController = new ContractController(knex);
 
-    await contractController.updateContract(req, res);
+    contractController.returnError = jest.fn();
 
-    expect(knex.table).toHaveBeenCalledWith('contract');
-    expect(knex.update).toHaveBeenCalledWith({
-      name: 'newName',
-      active: false,
-    });
+    await contractController.updateContract(req, res, mockNext);
 
-    expect(res.status).not.toBeCalledWith(201);
-
-    expect(res.json).toBeCalled();
+    expect(contractController.returnError).toHaveBeenCalled();
   });
 
   it('Delete action works', async () => {
@@ -295,7 +388,9 @@ describe('Contract controller works', () => {
 
     const contractController = new ContractController(knex);
 
-    await contractController.deleteContract(req, res);
+    contractController.returnError = jest.fn();
+
+    await contractController.deleteContract(req, res, mockNext);
 
     expect(knex.table).toHaveBeenCalledWith('contract');
     expect(knex.update).toHaveBeenCalledWith('deleted', true);
@@ -326,21 +421,78 @@ describe('Contract controller works', () => {
 
     const contractController = new ContractController(knex);
 
-    await contractController.deleteContract(req, res);
+    contractController.returnError = jest.fn();
 
-    expect(res.status).not.toBeCalledWith(201);
+    await contractController.deleteContract(req, res, mockNext);
+
+    expect(contractController.returnError).toHaveBeenCalled();
   });
-
   it('Error function', () => {
     const knex = {} as any as Knex;
-    const res = mockRes();
-    const error = {
-      sqlState: 1,
-    };
-
     const contractController = new ContractController(knex);
-    contractController.returnError(error, res);
 
-    expect(res.status).toBeCalledWith(501);
+    const nextErrorMock = jest.fn();
+
+    contractController.returnError(
+      'some error',
+      'some error',
+      500000,
+      500,
+      'test',
+      nextErrorMock,
+    );
+
+    expect(nextErrorMock).toBeCalledWith({
+      message: 'some error',
+      statusCode: 500,
+      errorCode: 500000,
+      onFunction: 'test',
+      onFile: 'contract.controller.ts',
+      logMessage: 'some error',
+      errorObject: undefined,
+      originalError: undefined,
+    });
+
+    contractController.returnError(
+      'some error',
+      'some error',
+      500000,
+      500,
+      'test',
+      nextErrorMock,
+      { response: true },
+    );
+
+    expect(nextErrorMock).toBeCalledWith({
+      message: 'some error',
+      statusCode: 500,
+      errorCode: 500000,
+      onFunction: 'test',
+      onFile: 'contract.controller.ts',
+      logMessage: 'some error',
+      errorObject: true,
+      originalError: undefined,
+    });
+
+    contractController.returnError(
+      'some error',
+      'some error',
+      500000,
+      500,
+      'test',
+      nextErrorMock,
+      { sqlState: true },
+    );
+
+    expect(nextErrorMock).toBeCalledWith({
+      message: 'Data base error. some error',
+      statusCode: 500,
+      errorCode: 500000,
+      onFunction: 'test',
+      onFile: 'contract.controller.ts',
+      logMessage: 'some error',
+      errorObject: undefined,
+      originalError: { sqlState: true },
+    });
   });
 });

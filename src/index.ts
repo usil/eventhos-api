@@ -20,8 +20,8 @@ const start = async () => {
   const serverApp = await newServer(port || 1000, configuration);
   const server = serverApp.server;
 
-  server.on('listening', () => {
-    configuration.log().info('http://localhost:' + port);
+  server.on('listening', () => {    
+    configuration.log().info('http://localhost:' + port+` on pid: ${process.pid}`);
   });
 
   server.on('close', () => {
@@ -29,18 +29,27 @@ const start = async () => {
   });
 };
 
-if (cluster.isMaster) {
-  configuration.log().info(`Master ${process.pid} is running`);
-  for (let i = 0; i < configuration.cpuCount; i++) {
-    cluster
-      .fork()
-      .on('listening', () => configuration.log().info(`Cluster #${i} created`));
-  }
-  cluster.on('exit', (worker, _code, _signal) => {
-    configuration.log().warn(`worker ${worker.process.pid} died`);
-    configuration.log().info('Trying to fork another');
-    cluster.fork();
-  });
-} else {
+console.log("configuration.cpuCount:"+configuration.cpuCount)
+if(typeof configuration.cpuCount === 'undefined' || configuration.cpuCount == 1){
+  console.log("single thread detected");
   start();
+}else{
+  console.log("multithread is enabled");
+
+  if (cluster.isMaster) {
+    for (let i = 0; i < configuration.cpuCount; i++) {
+      console.log("launching thread: "+i)    
+      cluster
+        .fork()
+        .on('listening', () => configuration.log().info(`Cluster #${i} created`));
+    }
+    cluster.on('exit', (worker, _code, _signal) => {
+      configuration.log().warn(`worker ${worker.process.pid} died`);
+      configuration.log().info('Trying to fork another');
+      cluster.fork();
+    });
+  }else{
+    start();
+  }
+
 }

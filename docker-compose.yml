@@ -4,15 +4,29 @@ services:
     build: .
     container_name: eventhos-api
     ports:
-      - '1000:1000'
+      - '2109:2109'
     environment:
-      DATA_BASE_NAME: 'eventhos'
+      NODE_ENV: "production"
+      CPU_COUNT: 1
+      PORT: 2109      
+      DATA_BASE_NAME: "eventhos"
       DATA_BASE_HOST: host.docker.internal
       DATA_BASE_PORT: 3306
-      DATA_BASE_USER: 'usr_eventhos'
-      DATA_BASE_PASSWORD: 'abcdefg'
-      NODE_ENV: 'production'
-      CPU_COUNT: 1
+      DATA_BASE_USER: "usr_eventhos"
+      DATA_BASE_PASSWORD: ${MYSQL_PASSWORD:-changeme}
+      DATA_BASE_POOL_MAX: 300
+      DATA_BASE_POOL_MIN: 100
+      DATA_BASE_ACQUIRE_CONNECTION_TIMEOUT: 10000
+      JWT_SECRET: ${JWT_SECRET:-changeme}
+      CRYPTO_KEY: ${CRYPTO_KEY:-changeme}
+      SMTP_HOST: ${SMTP_HOST:-changeme}
+      SMTP_PORT: ${SMTP_PORT:-changeme}
+      SMTP_USER: ${SMTP_USER:-changeme}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-changeme}
+      SMTP_SECURE: "true"
+      SMTP_TLS_CIPHERS: SSLv3
+      SMTP_DEFAULT_RECIPIENT: ${SMTP_DEFAULT_RECIPIENT:-changeme}
+      TZ: America/Lima
     depends_on:
       eventhos-db:
         condition: service_healthy
@@ -33,8 +47,8 @@ services:
     volumes:
       - ./database:/docker-entrypoint-initdb.d
     environment:
-      MYSQL_ROOT_PASSWORD: 'abcdefg'
-      MYSQL_PASSWORD: 'abcdefg'
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-changeme}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-changeme}
       MYSQL_USER: 'usr_eventhos'
       MYSQL_DATABASE: 'eventhos'
       TZ: America/Lima
@@ -44,7 +58,7 @@ services:
           memory: 1024M
     healthcheck:
       test: 'cat /var/log/mysql/general-log.log | grep "root@localhost on  using Socket"'
-      interval: 1s
+      interval: 10s
       retries: 120
 
 networks:

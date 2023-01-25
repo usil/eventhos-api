@@ -1,16 +1,26 @@
--- MySQL Workbench Forward Engineering
+-- MySQL dump 10.13  Distrib 5.7.34, for linux-glibc2.12 (x86_64)
+--
+-- Host: 192.168.0.19    Database: acme
+-- ------------------------------------------------------
+-- Server version	5.7.38
 
-SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
-SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
-SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL,ALLOW_INVALID_DATES';
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
--- -----------------------------------------------------
--- Schema eventhos
--- -----------------------------------------------------
 
 -- -----------------------------------------------------
 -- Table `system`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `system` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'The Id For The Producer',
   `class` VARCHAR(45) NOT NULL COMMENT '\'The class of the system (producer or consumer)\'',
@@ -25,14 +35,16 @@ CREATE TABLE IF NOT EXISTS `system` (
   PRIMARY KEY (`id`),
   UNIQUE INDEX `idProducer_UNIQUE` (`id` ASC),
   UNIQUE INDEX `indifier_UNIQUE` (`identifier` ASC),
-  UNIQUE INDEX `client_id_UNIQUE` (`client_id` ASC),
-  UNIQUE INDEX `name_UNIQUE` (`name` ASC))
-ENGINE = InnoDB;
+  UNIQUE INDEX `client_id_UNIQUE` (`client_id` ASC)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 
 -- -----------------------------------------------------
 -- Table `event`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `event` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'The id for the event',
   `system_id` INT UNSIGNED NOT NULL,
@@ -47,18 +59,20 @@ CREATE TABLE IF NOT EXISTS `event` (
   UNIQUE INDEX `idProducer_Event_UNIQUE` (`id` ASC),
   UNIQUE INDEX `identifier_UNIQUE` (`identifier` ASC),
   INDEX `fk_event_system1_idx` (`system_id` ASC),
-  UNIQUE INDEX `name_UNIQUE` (`name` ASC),
   CONSTRAINT `fk_event_system1`
     FOREIGN KEY (`system_id`)
     REFERENCES `system` (`id`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
+    ON UPDATE NO ACTION
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 
 -- -----------------------------------------------------
 -- Table `action`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `action` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `system_id` INT UNSIGNED NOT NULL,
@@ -74,18 +88,20 @@ CREATE TABLE IF NOT EXISTS `action` (
   UNIQUE INDEX `identifier_UNIQUE` (`identifier` ASC),
   UNIQUE INDEX `id_UNIQUE` (`id` ASC),
   INDEX `fk_action_system1_idx` (`system_id` ASC),
-  UNIQUE INDEX `name_UNIQUE` (`name` ASC),
   CONSTRAINT `fk_action_system1`
     FOREIGN KEY (`system_id`)
     REFERENCES `system` (`id`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
+    ON UPDATE NO ACTION
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 
 -- -----------------------------------------------------
 -- Table `action_security`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `action_security` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `action_id` INT UNSIGNED NOT NULL,
@@ -99,13 +115,16 @@ CREATE TABLE IF NOT EXISTS `action_security` (
     FOREIGN KEY (`action_id`)
     REFERENCES `action` (`id`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
+    ON UPDATE NO ACTION
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 
 -- -----------------------------------------------------
 -- Table `contract`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `contract` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `action_id` INT UNSIGNED NOT NULL,
@@ -117,6 +136,7 @@ CREATE TABLE IF NOT EXISTS `contract` (
   `deleted` TINYINT(1) NULL DEFAULT 0,
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `mail_recipients_on_error` VARCHAR(100) DEFAULT NULL COMMENT 'Mail of people who will receive the mail when there is an error at the time of executing the contract',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `id_UNIQUE` (`id` ASC),
   INDEX `fk_contract_event1_idx` (`event_id` ASC),
@@ -131,13 +151,16 @@ CREATE TABLE IF NOT EXISTS `contract` (
     FOREIGN KEY (`action_id`)
     REFERENCES `action` (`id`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
+    ON UPDATE NO ACTION
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 
 -- -----------------------------------------------------
 -- Table `variable`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `variable` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `key` VARCHAR(300) NOT NULL,
@@ -145,13 +168,16 @@ CREATE TABLE IF NOT EXISTS `variable` (
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE INDEX `id_UNIQUE` (`id` ASC))
-ENGINE = InnoDB;
+  UNIQUE INDEX `id_UNIQUE` (`id` ASC)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 
 -- -----------------------------------------------------
 -- Table `received_event`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `received_event` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'The id for the event',
   `event_id` INT UNSIGNED NOT NULL COMMENT 'The id of the event',
@@ -164,18 +190,23 @@ CREATE TABLE IF NOT EXISTS `received_event` (
     FOREIGN KEY (`event_id`)
     REFERENCES `event` (`id`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
+    ON UPDATE NO ACTION
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 
 -- -----------------------------------------------------
 -- Table `contract_exc_detail`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `contract_exc_detail` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'The id for the event',
   `contract_id` INT UNSIGNED NOT NULL,
   `received_event_id` INT UNSIGNED NOT NULL,
   `state` VARCHAR(15) NOT NULL COMMENT 'What satate the contract is at? (ERROR, PROCESSING, COMPLETED)',
+  `attempts` INT DEFAULT 0 COMMENT 'Accumulated execution retries of contract - event',
+  `is_aborted` BOOLEAN DEFAULT false COMMENT 'Column to know if contract_exc_detail was aborted',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `id_UNIQUE` (`id` ASC),
   INDEX `fk_contract_exc_detail_recived_event1_idx` (`received_event_id` ASC),
@@ -189,13 +220,16 @@ CREATE TABLE IF NOT EXISTS `contract_exc_detail` (
     FOREIGN KEY (`contract_id`)
     REFERENCES `contract` (`id`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
+    ON UPDATE NO ACTION
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 
 -- -----------------------------------------------------
 -- Table `contract_exc_try`
 -- -----------------------------------------------------
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `contract_exc_try` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `contract_exc_detail_id` INT UNSIGNED NOT NULL,
@@ -204,6 +238,8 @@ CREATE TABLE IF NOT EXISTS `contract_exc_try` (
   `state` VARCHAR(15) NOT NULL COMMENT 'What satate the contract is at? (ERROR, PROCESSING, COMPLETED)',
   `finished_at` TIMESTAMP NULL COMMENT 'When was the contract executed',
   `executed_at` TIMESTAMP NULL COMMENT 'When was the contract executed',
+  `attempts` INT DEFAULT 0 COMMENT 'Accumulated execution retries of contract - event',
+  `is_aborted` BOOLEAN DEFAULT false COMMENT 'Column to know if contract_exc_try was aborted',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `id_UNIQUE` (`id` ASC),
   INDEX `fk_contract_exc_try_contract_exc_detail1_idx` (`contract_exc_detail_id` ASC),
@@ -211,10 +247,22 @@ CREATE TABLE IF NOT EXISTS `contract_exc_try` (
     FOREIGN KEY (`contract_exc_detail_id`)
     REFERENCES `contract_exc_detail` (`id`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
+    ON UPDATE NO ACTION
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+/*!40101 SET character_set_client = @saved_cs_client */;
 
-SET SQL_MODE=@OLD_SQL_MODE;
-SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
-SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
+--
+-- Dumping routines for database 'acme'
+--
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2022-09-22 10:34:05

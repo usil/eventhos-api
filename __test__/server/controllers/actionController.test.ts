@@ -3,6 +3,10 @@ import { Request, Response } from 'express';
 import { Knex } from 'knex';
 import crypto from 'crypto';
 
+jest.mock('nanoid', () => {
+  return { nanoid: () => '1234' };
+});
+
 const mockRes = () => {
   const res: Response = {} as Response;
   res.status = jest.fn().mockReturnValue(res);
@@ -10,6 +14,8 @@ const mockRes = () => {
   res.locals = {};
   return res;
 };
+
+const mockNext = jest.fn();
 
 describe('Actions controller functions work', () => {
   it('Create action works, public security', async () => {
@@ -30,6 +36,7 @@ describe('Actions controller functions work', () => {
 
     const knex = {
       table: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnValue([]),
       insert: jest.fn().mockResolvedValue([1]),
     } as any as Knex;
 
@@ -56,7 +63,9 @@ describe('Actions controller functions work', () => {
 
     const actionController = new ActionController(knex);
 
-    await actionController.createAction(req, res);
+    actionController.returnError = jest.fn();
+
+    await actionController.createAction(req, res, mockNext);
 
     expect(cipherSpy).toHaveBeenCalledWith(
       'aes-256-ctr',
@@ -69,6 +78,8 @@ describe('Actions controller functions work', () => {
     expect(vectorSpy).toHaveBeenCalledWith(16);
 
     expect(knex.insert).toBeCalledTimes(2);
+
+    expect(knex.where).toHaveBeenCalledWith('identifier', 'action_identifier');
 
     // expect(knex.insert).toHaveBeenCalledWith({
     //   action_id: 1,
@@ -96,6 +107,69 @@ describe('Actions controller functions work', () => {
     keySpy.mockRestore();
   });
 
+  it('Create action identifier already exist', async () => {
+    const cipherSpy = jest.spyOn(crypto, 'createCipheriv').mockReturnValue({
+      update: jest.fn().mockReturnValue('encrypted'),
+      final: jest.fn().mockReturnValue('final'),
+    } as any);
+
+    const keyBuffer = Buffer.from('some', 'utf-8');
+
+    const vectorBuffer = Buffer.from('some', 'utf-8');
+
+    const keySpy = jest.spyOn(crypto, 'scryptSync').mockReturnValue(keyBuffer);
+
+    const vectorSpy = jest
+      .spyOn(crypto, 'randomBytes')
+      .mockReturnValue(vectorBuffer as any);
+
+    const knex = {
+      table: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnValue([1]),
+      insert: jest.fn().mockResolvedValue([1]),
+    } as any as Knex;
+
+    const res = mockRes();
+
+    const req = {
+      body: {
+        system_id: 1,
+        identifier: 'action_identifier',
+        name: 'action name',
+        operation: 'new',
+        description: 'action description',
+        url: 'action.com',
+        method: 'get',
+        headers: [{ key: 'some', value: 1 }],
+        body: [{ key: 'some', value: 2 }],
+        queryUrlParams: [{ key: 'some', value: 3 }],
+        securityType: 2,
+        securityUrl: null,
+        clientId: null,
+        clientSecret: null,
+      },
+    } as Request;
+
+    const actionController = new ActionController(knex);
+
+    actionController.returnError = jest.fn();
+
+    await actionController.createAction(req, res, mockNext);
+
+    expect(actionController.returnError).toHaveBeenCalledWith(
+      'Action identifier already exist',
+      'Action identifier already exist',
+      400001,
+      400,
+      'createAction',
+      mockNext,
+    );
+
+    cipherSpy.mockRestore();
+    vectorSpy.mockRestore();
+    keySpy.mockRestore();
+  });
+
   it('Create action works, raw body', async () => {
     const cipherSpy = jest.spyOn(crypto, 'createCipheriv').mockReturnValue({
       update: jest.fn().mockReturnValue('encrypted'),
@@ -114,6 +188,7 @@ describe('Actions controller functions work', () => {
 
     const knex = {
       table: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnValue([]),
       insert: jest.fn().mockResolvedValue([1]),
     } as any as Knex;
 
@@ -140,7 +215,9 @@ describe('Actions controller functions work', () => {
 
     const actionController = new ActionController(knex);
 
-    await actionController.createAction(req, res);
+    actionController.returnError = jest.fn();
+
+    await actionController.createAction(req, res, mockNext);
 
     expect(cipherSpy).toHaveBeenCalledWith(
       'aes-256-ctr',
@@ -204,6 +281,7 @@ describe('Actions controller functions work', () => {
 
     const knex = {
       table: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnValue([]),
       insert: jest.fn().mockResolvedValue([1]),
     } as any as Knex;
 
@@ -244,7 +322,9 @@ describe('Actions controller functions work', () => {
 
     const actionController = new ActionController(knex);
 
-    await actionController.createAction(req, res);
+    actionController.returnError = jest.fn();
+
+    await actionController.createAction(req, res, mockNext);
 
     expect(cipherSpy).toHaveBeenCalledWith(
       'aes-256-ctr',
@@ -264,7 +344,7 @@ describe('Actions controller functions work', () => {
 
     expect(knex.insert).toHaveBeenCalledWith({
       system_id: 1,
-      identifier: 'action_identifier',
+      identifier: 'action_identifier-1234',
       name: 'action name',
       http_configuration: hexedVector + '|.|' + 'encrypted' + 'final',
       operation: 'new',
@@ -303,6 +383,7 @@ describe('Actions controller functions work', () => {
 
     const knex = {
       table: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnValue([]),
       insert: jest.fn().mockRejectedValue(new Error('Async error')),
     } as any as Knex;
 
@@ -329,7 +410,9 @@ describe('Actions controller functions work', () => {
 
     const actionController = new ActionController(knex);
 
-    await actionController.createAction(req, res);
+    actionController.returnError = jest.fn();
+
+    await actionController.createAction(req, res, mockNext);
 
     expect(cipherSpy).toHaveBeenCalledWith(
       'aes-256-ctr',
@@ -337,8 +420,7 @@ describe('Actions controller functions work', () => {
       vectorBuffer,
     );
 
-    expect(res.json).toHaveBeenCalled();
-    expect(res.status).not.toHaveBeenCalledWith(201);
+    expect(actionController.returnError).toHaveBeenCalled();
 
     cipherSpy.mockRestore();
     vectorSpy.mockRestore();
@@ -370,7 +452,9 @@ describe('Actions controller functions work', () => {
 
     const actionController = new ActionController(knex);
 
-    await actionController.getActions(req, res);
+    actionController.returnError = jest.fn();
+
+    await actionController.getActions(req, res, mockNext);
 
     expect(knex.table).toHaveBeenCalledWith('action');
     expect(knex.offset).toHaveBeenCalledWith(0);
@@ -415,10 +499,11 @@ describe('Actions controller functions work', () => {
 
     const actionController = new ActionController(knex);
 
-    await actionController.getActions(req, res);
+    actionController.returnError = jest.fn();
 
-    expect(res.status).not.toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalled();
+    await actionController.getActions(req, res, mockNext);
+
+    expect(actionController.returnError).toHaveBeenCalled();
   });
 
   it('Delete action works', async () => {
@@ -440,7 +525,9 @@ describe('Actions controller functions work', () => {
 
     const actionController = new ActionController(knex);
 
-    await actionController.deleteAction(req, res);
+    actionController.returnError = jest.fn();
+
+    await actionController.deleteAction(req, res, mockNext);
 
     expect(knex.table).toHaveBeenCalledWith('contract');
     expect(knex.update).toHaveBeenCalledWith('deleted', true);
@@ -473,14 +560,18 @@ describe('Actions controller functions work', () => {
 
     const actionController = new ActionController(knex);
 
-    await actionController.deleteAction(req, res);
+    actionController.returnError = jest.fn();
 
-    expect(res.status).toBeCalledWith(400);
+    await actionController.deleteAction(req, res, mockNext);
 
-    expect(res.json).toBeCalledWith({
-      code: 400500,
-      message: 'Action has active contracts',
-    });
+    expect(actionController.returnError).toBeCalledWith(
+      'Action has active contracts',
+      'Action has active contracts',
+      400003,
+      404,
+      'getAction',
+      mockNext,
+    );
   });
 
   it('Delete action fails', async () => {
@@ -500,7 +591,9 @@ describe('Actions controller functions work', () => {
 
     const actionController = new ActionController(knex);
 
-    await actionController.deleteAction(req, res);
+    actionController.returnError = jest.fn();
+
+    await actionController.deleteAction(req, res, mockNext);
 
     expect(res.status).not.toBeCalledWith(201);
   });
@@ -539,12 +632,14 @@ describe('Actions controller functions work', () => {
 
     const actionController = new ActionController(knex);
 
+    actionController.returnError = jest.fn();
+
     const initVector = crypto.randomBytes(16);
     const hexedInitVector = initVector.toString('hex');
     actionController.encryptString = jest
       .fn()
       .mockReturnValue({ hexedInitVector, encryptedData: 'xx' });
-    await actionController.updateAction(req, res);
+    await actionController.updateAction(req, res, mockNext);
 
     expect(knex.table).toHaveBeenCalledWith('action');
     expect(knex.update).toHaveBeenCalledWith({
@@ -598,12 +693,14 @@ describe('Actions controller functions work', () => {
 
     const actionController = new ActionController(knex);
 
+    actionController.returnError = jest.fn();
+
     const initVector = crypto.randomBytes(16);
     const hexedInitVector = initVector.toString('hex');
     actionController.encryptString = jest
       .fn()
       .mockReturnValue({ hexedInitVector, encryptedData: 'xx' });
-    await actionController.updateAction(req, res);
+    await actionController.updateAction(req, res, mockNext);
 
     expect(knex.table).toHaveBeenCalledWith('action');
     expect(knex.update).toHaveBeenCalledWith({
@@ -644,11 +741,11 @@ describe('Actions controller functions work', () => {
 
     const actionController = new ActionController(knex);
 
-    await actionController.updateAction(req, res);
+    actionController.returnError = jest.fn();
 
-    expect(res.status).not.toBeCalledWith(201);
+    await actionController.updateAction(req, res, mockNext);
 
-    expect(res.json).toBeCalled();
+    expect(actionController.returnError).toHaveBeenCalled();
   });
 
   it('Error function', () => {
@@ -659,9 +756,70 @@ describe('Actions controller functions work', () => {
     };
 
     const actionController = new ActionController(knex);
-    actionController.returnError(error, res);
 
-    expect(res.status).toBeCalledWith(501);
+    const nextErrorMock = jest.fn();
+
+    actionController.returnError(
+      'some error',
+      'some error',
+      500000,
+      500,
+      'test',
+      nextErrorMock,
+    );
+
+    expect(nextErrorMock).toBeCalledWith({
+      message: 'some error',
+      statusCode: 500,
+      errorCode: 500000,
+      onFunction: 'test',
+      onFile: 'action.controllers.ts',
+      logMessage: 'some error',
+      errorObject: undefined,
+      originalError: undefined,
+    });
+
+    actionController.returnError(
+      'some error',
+      'some error',
+      500000,
+      500,
+      'test',
+      nextErrorMock,
+      { response: true },
+    );
+
+    expect(nextErrorMock).toBeCalledWith({
+      message: 'some error',
+      statusCode: 500,
+      errorCode: 500000,
+      onFunction: 'test',
+      onFile: 'action.controllers.ts',
+      logMessage: 'some error',
+      errorObject: true,
+      originalError: undefined,
+    });
+
+    actionController.returnError(
+      'some error',
+      'some error',
+      500000,
+      500,
+      'test',
+      nextErrorMock,
+      { sqlState: true },
+    );
+
+    expect(nextErrorMock).toBeCalledWith({
+      message: 'Data base error. some error',
+      statusCode: 500,
+      errorCode: 500000,
+      onFunction: 'test',
+      onFile: 'action.controllers.ts',
+      logMessage: 'some error',
+      errorObject: undefined,
+      originalError: { sqlState: true },
+    });
   });
 
   it('Get action, no action found', async () => {
@@ -680,7 +838,8 @@ describe('Actions controller functions work', () => {
     } as any as Knex;
 
     const actionController = new ActionController(knex);
-    await actionController.getAction(req, res);
+    actionController.returnError = jest.fn();
+    await actionController.getAction(req, res, mockNext);
 
     expect(knex.join).toHaveBeenCalledWith(
       'action_security',
@@ -704,12 +863,14 @@ describe('Actions controller functions work', () => {
       'action_security.http_configuration as securityHttpConfiguration',
     );
 
-    expect(res.status).toHaveBeenCalledWith(404);
-    expect(res.json).toHaveBeenCalledWith({
-      code: 400004,
-      message: 'No action found',
-      content: undefined,
-    });
+    expect(actionController.returnError).toHaveBeenCalledWith(
+      'Action does not exist',
+      'Action does not exist',
+      400002,
+      404,
+      'getAction',
+      mockNext,
+    );
   });
 
   it('Get action works', async () => {
@@ -732,10 +893,12 @@ describe('Actions controller functions work', () => {
     } as any as Knex;
 
     const actionController = new ActionController(knex);
+
+    actionController.returnError = jest.fn();
     actionController.decryptString = jest
       .fn()
       .mockReturnValue('{"decrypted": 1}');
-    await actionController.getAction(req, res);
+    await actionController.getAction(req, res, mockNext);
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(actionController.decryptString).toHaveBeenLastCalledWith('|.|');
@@ -765,11 +928,13 @@ describe('Actions controller functions work', () => {
     } as any as Knex;
 
     const actionController = new ActionController(knex);
+
+    actionController.returnError = jest.fn();
     actionController.decryptString = jest
       .fn()
       .mockReturnValue('{"decrypted": 1}');
 
-    await actionController.getAction(req, res);
+    await actionController.getAction(req, res, mockNext);
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
@@ -816,10 +981,12 @@ describe('Actions controller functions work', () => {
     } as any as Knex;
 
     const actionController = new ActionController(knex);
+
+    actionController.returnError = jest.fn();
     actionController.decryptString = jest
       .fn()
       .mockReturnValue('{"decrypted": 1}');
-    await actionController.getAction(req, res);
+    await actionController.getAction(req, res, mockNext);
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(actionController.decryptString).toHaveBeenCalledTimes(2);
@@ -842,10 +1009,12 @@ describe('Actions controller functions work', () => {
     } as any as Knex;
 
     const actionController = new ActionController(knex);
+
+    actionController.returnError = jest.fn();
     actionController.decryptString = jest
       .fn()
       .mockReturnValue('{"decrypted": 1}');
-    await actionController.getAction(req, res);
+    await actionController.getAction(req, res, mockNext);
 
     expect(res.status).not.toHaveBeenCalledWith(200);
   });

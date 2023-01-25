@@ -2,6 +2,10 @@
   "state": "${NODE_ENV}",
   "port": "${PORT}",
   "cpuCount": "${CPU_COUNT}",
+  "logs": {
+    "useFile": true,
+    "level": "debug"
+  },
   "dataBase": {
     "name": "${DATA_BASE_NAME}",
     "host": "${DATA_BASE_HOST}",
@@ -16,6 +20,7 @@
     "timeout": 70000
   },
   "oauth2": {
+    "jwtTokenExpiresIn": "24h",
     "jwtSecret": "${JWT_SECRET}"
   },
   "encryption": {
