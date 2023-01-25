@@ -136,6 +136,7 @@ CREATE TABLE IF NOT EXISTS `contract` (
   `deleted` TINYINT(1) NULL DEFAULT 0,
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `mail_recipients_on_error` VARCHAR(100) DEFAULT NULL COMMENT 'Mail of people who will receive the mail when there is an error at the time of executing the contract',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `id_UNIQUE` (`id` ASC),
   INDEX `fk_contract_event1_idx` (`event_id` ASC),
@@ -204,6 +205,8 @@ CREATE TABLE IF NOT EXISTS `contract_exc_detail` (
   `contract_id` INT UNSIGNED NOT NULL,
   `received_event_id` INT UNSIGNED NOT NULL,
   `state` VARCHAR(15) NOT NULL COMMENT 'What satate the contract is at? (ERROR, PROCESSING, COMPLETED)',
+  `attempts` INT DEFAULT 0 COMMENT 'Accumulated execution retries of contract - event',
+  `is_aborted` BOOLEAN DEFAULT false COMMENT 'Column to know if contract_exc_detail was aborted',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `id_UNIQUE` (`id` ASC),
   INDEX `fk_contract_exc_detail_recived_event1_idx` (`received_event_id` ASC),
@@ -235,6 +238,8 @@ CREATE TABLE IF NOT EXISTS `contract_exc_try` (
   `state` VARCHAR(15) NOT NULL COMMENT 'What satate the contract is at? (ERROR, PROCESSING, COMPLETED)',
   `finished_at` TIMESTAMP NULL COMMENT 'When was the contract executed',
   `executed_at` TIMESTAMP NULL COMMENT 'When was the contract executed',
+  `attempts` INT DEFAULT 0 COMMENT 'Accumulated execution retries of contract - event',
+  `is_aborted` BOOLEAN DEFAULT false COMMENT 'Column to know if contract_exc_try was aborted',
   PRIMARY KEY (`id`),
   UNIQUE INDEX `id_UNIQUE` (`id` ASC),
   INDEX `fk_contract_exc_try_contract_exc_detail1_idx` (`contract_exc_detail_id` ASC),
@@ -244,6 +249,7 @@ CREATE TABLE IF NOT EXISTS `contract_exc_try` (
     ON DELETE NO ACTION
     ON UPDATE NO ACTION
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --

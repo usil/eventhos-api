@@ -14,7 +14,14 @@ class ContractControllers {
 
   createContract = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { eventId, actionId, name, identifier, order } = req.body;
+      const {
+        eventId,
+        actionId,
+        name,
+        identifier,
+        order,
+        mailRecipientsOnError,
+      } = req.body;
 
       const contract = await this.knexPool
         .table('contract')
@@ -39,6 +46,7 @@ class ContractControllers {
           event_id: eventId,
           action_id: actionId,
           order,
+          mail_recipients_on_error: mailRecipientsOnError,
         });
 
       return res.status(201).json({
@@ -89,6 +97,7 @@ class ContractControllers {
           'consumerSystem.name as consumerName',
           'event.identifier as eventIdentifier',
           'action.identifier as actionIdentifier',
+          'mail_recipients_on_error as mailRecipientsOnError',
         )
         .join('action', `contract.action_id`, 'action.id')
         .join('event', `contract.event_id`, 'event.id')
@@ -166,13 +175,14 @@ class ContractControllers {
   updateContract = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      const { name, active, order } = req.body;
+      const { name, active, order, mailRecipientsOnError } = req.body;
       await this.knexPool
         .table('contract')
         .update({
           name,
           order,
           active,
+          mail_recipients_on_error: mailRecipientsOnError,
         })
         .where('id', id);
       return res.status(201).json({

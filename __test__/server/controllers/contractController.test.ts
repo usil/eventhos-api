@@ -172,6 +172,7 @@ describe('Contract controller works', () => {
       'consumerSystem.name as consumerName',
       'event.identifier as eventIdentifier',
       'action.identifier as actionIdentifier',
+      'mail_recipients_on_error as mailRecipientsOnError',
     );
     expect(knex.where).toHaveBeenCalledWith('deleted', false);
     expect(knex.count).toHaveBeenCalled();
