@@ -34,6 +34,7 @@ export interface Contract {
   deleted: number;
   created_at: Date;
   updated_at: Date;
+  mail_recipients_on_error: string;
 }
 
 export interface ContractJoined {
@@ -44,6 +45,7 @@ export interface ContractJoined {
   active: number;
   producerName: string;
   consumerName: string;
+  mailRecipientsOnError: string;
 }
 
 export interface ActionSecurity {
@@ -53,6 +55,19 @@ export interface ActionSecurity {
   http_configuration?: string;
   json_path?: string;
   updated_at: Date;
+}
+
+export interface System {
+  id: number;
+  class: string;
+  identifier: string;
+  name: string;
+  type: string;
+  description: string;
+  deleted: Date;
+  created_at: Date;
+  updated_at: Date;
+  client_id: number;
 }
 
 enum Operations {

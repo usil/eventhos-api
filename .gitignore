@@ -21,6 +21,10 @@ npm-debug.log
 /node_modules
 coverage
 
+*.log
+*.log.*
+
+
 # profiling files
 chrome-profiler-events*.json
 speed-measure-plugin*.json

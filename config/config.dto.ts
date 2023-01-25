@@ -1,8 +1,9 @@
-import bunyan from 'bunyan';
+import log4js from 'log4js';
 
 /**
  * @description The parameters that all environments should have
  */
+
 export class ConfigGlobalDto {
   state: string;
   port: number;
@@ -32,11 +33,12 @@ export class ConfigGlobalDto {
   };
   oauth2: {
     jwtSecret: string;
+    jwtTokenExpiresIn: string;
   };
   encryption: {
     key: string;
   };
-  log: () => bunyan;
+  log: () => log4js.Logger;
 }
 
 export default new ConfigGlobalDto();

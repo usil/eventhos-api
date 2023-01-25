@@ -1,9 +1,10 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { Knex } from 'knex';
 
-import colors from 'colors';
 import { ContractJoined } from '../dtos/eventhosInterface';
 import controllerHelpers from './helpers/controller-helpers';
+import ErrorForNext from './helpers/ErrorForNext';
+import { nanoid } from 'nanoid';
 
 class ContractControllers {
   knexPool: Knex;
@@ -11,18 +12,41 @@ class ContractControllers {
     this.knexPool = knexPool;
   }
 
-  createContract = async (req: Request, res: Response) => {
+  createContract = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { eventId, actionId, name, identifier, order } = req.body;
+      const {
+        eventId,
+        actionId,
+        name,
+        identifier,
+        order,
+        mailRecipientsOnError,
+      } = req.body;
+
+      const contract = await this.knexPool
+        .table('contract')
+        .where('identifier', identifier);
+
+      if (contract && contract.length > 0) {
+        return this.returnError(
+          'Contract identifier already exist',
+          'Contract identifier already exist',
+          400101,
+          400,
+          'createContract',
+          next,
+        );
+      }
 
       const contractCreationResult = await this.knexPool
         .table('contract')
         .insert({
           name,
-          identifier,
+          identifier: `${identifier}-${nanoid(10)}`,
           event_id: eventId,
           action_id: actionId,
           order,
+          mail_recipients_on_error: mailRecipientsOnError,
         });
 
       return res.status(201).json({
@@ -31,11 +55,19 @@ class ContractControllers {
         content: { actionId: contractCreationResult[0] },
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500101,
+        500,
+        'createContract',
+        next,
+        error,
+      );
     }
   };
 
-  getContracts = async (req: Request, res: Response) => {
+  getContracts = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { itemsPerPage, offset, pageIndex, order } =
         controllerHelpers.getPaginationData(req);
@@ -65,6 +97,7 @@ class ContractControllers {
           'consumerSystem.name as consumerName',
           'event.identifier as eventIdentifier',
           'action.identifier as actionIdentifier',
+          'mail_recipients_on_error as mailRecipientsOnError',
         )
         .join('action', `contract.action_id`, 'action.id')
         .join('event', `contract.event_id`, 'event.id')
@@ -94,11 +127,23 @@ class ContractControllers {
         },
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500102,
+        500,
+        'getContracts',
+        next,
+        error,
+      );
     }
   };
 
-  getContractsFromEvent = async (req: Request, res: Response) => {
+  getContractsFromEvent = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const { eventId } = req.params;
 
@@ -115,20 +160,29 @@ class ContractControllers {
         content: contracts,
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500103,
+        500,
+        'getContractsFromEvent',
+        next,
+        error,
+      );
     }
   };
 
-  updateContract = async (req: Request, res: Response) => {
+  updateContract = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      const { name, active, order } = req.body;
+      const { name, active, order, mailRecipientsOnError } = req.body;
       await this.knexPool
         .table('contract')
         .update({
           name,
           order,
           active,
+          mail_recipients_on_error: mailRecipientsOnError,
         })
         .where('id', id);
       return res.status(201).json({
@@ -136,11 +190,19 @@ class ContractControllers {
         message: 'success',
       });
     } catch (error) {
-      this.returnError(error, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500104,
+        500,
+        'updateContract',
+        next,
+        error,
+      );
     }
   };
 
-  deleteContract = async (req: Request, res: Response) => {
+  deleteContract = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
 
@@ -154,11 +216,23 @@ class ContractControllers {
         message: 'success',
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500105,
+        500,
+        'deleteContract',
+        next,
+        error,
+      );
     }
   };
 
-  editContractOrders = async (req: Request, res: Response) => {
+  editContractOrders = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const orders = req.body.orders as { contractId: number; order: number }[];
       for (const order of orders) {
@@ -173,21 +247,44 @@ class ContractControllers {
         message: 'success',
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500106,
+        500,
+        'editContractOrders',
+        next,
+        error,
+      );
     }
   };
 
-  returnError = (error: any, res: Response) => {
-    console.log('here is an error:', colors.red(error));
-    if (error.sqlState) {
-      return res.status(501).json({
-        code: 500001,
-        message: `Data base error, with code ${error.sqlState}`,
-      });
-    }
-    return res
-      .status(500)
-      .json({ code: 500000, message: 'Server Internal Error' });
+  returnError = (
+    message: string,
+    logMessage: string,
+    errorCode: number,
+    statusCode: number,
+    onFunction: string,
+    next: NextFunction,
+    error?: any,
+  ) => {
+    const errorForNext = new ErrorForNext(
+      message,
+      statusCode,
+      errorCode,
+      onFunction,
+      'contract.controller.ts',
+    ).setLogMessage(logMessage);
+
+    if (error && error.response === undefined)
+      errorForNext.setOriginalError(error);
+
+    if (error && error.response) errorForNext.setErrorObject(error.response);
+
+    if (error && error.sqlState)
+      errorForNext.setMessage(`Data base error. ${message}`);
+
+    return next(errorForNext.toJSON());
   };
 }
 

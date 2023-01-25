@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+table {
+  font-family: arial, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+td, th {
+  border: 1px solid #dddddd;
+  text-align: left;
+  padding: 8px;
+}
+
+tr:nth-child(even) {
+  background-color: #dddddd;
+}
+</style>
+</head>
+<body>
+    <table>
+        <tr>
+            <td>Contract</td>
+            <td>@contract</td>
+        </tr>
+        <tr>
+            <td>When</td>
+            <td>@when</td>
+        </tr>
+        <tr>
+            <td>In</td>
+            <td>@inWhen</td>
+        </tr>
+        <tr>
+            <td>Then</td>
+            <td>@then</td>
+        </tr>
+        <tr>
+            <td>In</td>
+            <td>@inThen</td>
+        </tr>
+    </table>
+
+    <h3>Event Details</h3>
+    <table>
+        <tr>
+            <td>timestamp</td>
+            <td>@timestampEvent</td>
+        </tr>
+        <tr>
+            <td>Url</td>
+            <td>@urlEvent</td>
+        </tr>
+        <tr>
+            <td>Body</td>
+            <td>@bodyEvent</td>
+        </tr>
+        <tr>
+            <td>Headers</td>
+            <td>@headersEvent</td>
+        </tr>
+    </table>
+
+    <h3>Subscriber Response</h3>
+    <table>
+        <tr>
+            <td>timestamp</td>
+            <td>@timestampSubscriber</td>
+        </tr>
+        <tr>
+            <td>Url</td>
+            <td>@urlSubscriber</td>
+        </tr>
+        <tr>
+            <td>Http Status</td>
+            <td>@httpStatusSubscriber</td>
+        </tr>
+        <tr>
+            <td>Body</td>
+            <td>@bodySubscriber</td>
+        </tr>
+        <tr>
+            <td>Headers</td>
+            <td>@headersSubscriber</td>
+        </tr>
+    </table>
+
+</body>
+</html>
+

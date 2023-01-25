@@ -1,7 +1,8 @@
 import { Knex } from 'knex';
-import { Request, Response } from 'express';
-import colors from 'colors';
+import { NextFunction, Request, Response } from 'express';
 import controllerHelpers from './helpers/controller-helpers';
+import ErrorForNext from './helpers/ErrorForNext';
+import { nanoid } from 'nanoid';
 class SystemController {
   knexPool: Knex;
 
@@ -9,7 +10,7 @@ class SystemController {
     this.knexPool = knexPool;
   }
 
-  getSystemEvents = async (req: Request, res: Response) => {
+  getSystemEvents = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const events = await this.knexPool
@@ -23,11 +24,23 @@ class SystemController {
         content: events,
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500301,
+        500,
+        'getSystemEvents',
+        next,
+        error,
+      );
     }
   };
 
-  getSystemActions = async (req: Request, res: Response) => {
+  getSystemActions = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const { id } = req.params;
       const actions = await this.knexPool
@@ -51,11 +64,19 @@ class SystemController {
         content: actions,
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500302,
+        500,
+        'getSystemActions',
+        next,
+        error,
+      );
     }
   };
 
-  createSystem = async (req: Request, res: Response) => {
+  createSystem = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { systemClass, identifier, name, type, clientId, description } =
         req.body;
@@ -70,14 +91,18 @@ class SystemController {
         )[0];
 
         if (!client) {
-          return res.status(404).json({
-            code: 400024,
-            message: `The client with id ${clientId} does not exist.`,
-          });
+          return this.returnError(
+            `The client with id ${clientId} does not exist.`,
+            `The client with id ${clientId} does not exist.`,
+            400301,
+            404,
+            'manageEvent',
+            next,
+          );
         }
 
         const systemInsert = await this.knexPool.table('system').insert({
-          identifier,
+          identifier: `${identifier}-${nanoid(10)}`,
           name,
           type,
           class: systemClass,
@@ -106,11 +131,19 @@ class SystemController {
         content: { systemId: insert[0] },
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500303,
+        500,
+        'createSystem',
+        next,
+        error,
+      );
     }
   };
 
-  getSystems = async (req: Request, res: Response) => {
+  getSystems = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { itemsPerPage, offset, pageIndex, order, activeSort } =
         controllerHelpers.getPaginationData(req);
@@ -152,11 +185,19 @@ class SystemController {
         },
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500304,
+        500,
+        'getSystems',
+        next,
+        error,
+      );
     }
   };
 
-  getSystem = async (req: Request, res: Response) => {
+  getSystem = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
 
@@ -168,11 +209,19 @@ class SystemController {
         content: system[0],
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500305,
+        500,
+        'getSystem',
+        next,
+        error,
+      );
     }
   };
 
-  deleteSystem = async (req: Request, res: Response) => {
+  deleteSystem = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
 
@@ -183,10 +232,14 @@ class SystemController {
         .andWhere('deleted', false);
 
       if (systemEvents.length > 0) {
-        return res.status(400).json({
-          code: 400500,
-          message: 'System has conflicting events',
-        });
+        return this.returnError(
+          'System has conflicting events',
+          'System has conflicting events',
+          400302,
+          400,
+          'manageEvent',
+          next,
+        );
       }
 
       const systemActions = await this.knexPool
@@ -196,10 +249,14 @@ class SystemController {
         .andWhere('deleted', false);
 
       if (systemActions.length > 0) {
-        return res.status(400).json({
-          code: 400500,
-          message: 'System has conflicting actions',
-        });
+        return this.returnError(
+          'System has conflicting actions',
+          'System has conflicting actions',
+          400303,
+          400,
+          'manageEvent',
+          next,
+        );
       }
 
       await this.knexPool
@@ -212,11 +269,19 @@ class SystemController {
         message: 'success',
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500306,
+        500,
+        'deleteSystem',
+        next,
+        error,
+      );
     }
   };
 
-  updateSystem = async (req: Request, res: Response) => {
+  updateSystem = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const { name, type, description, systemClass, clientId } = req.body;
@@ -237,13 +302,44 @@ class SystemController {
         message: 'success',
       });
     } catch (error) {
-      this.returnError(error.message, res);
+      return this.returnError(
+        error.message,
+        error.message,
+        500307,
+        500,
+        'updateSystem',
+        next,
+        error,
+      );
     }
   };
 
-  returnError = (errorMessage: string, res: Response) => {
-    console.log('here is an error:', colors.red(errorMessage));
-    return res.status(500).json({ code: 500000, message: errorMessage });
+  returnError = (
+    message: string,
+    logMessage: string,
+    errorCode: number,
+    statusCode: number,
+    onFunction: string,
+    next: NextFunction,
+    error?: any,
+  ) => {
+    const errorForNext = new ErrorForNext(
+      message,
+      statusCode,
+      errorCode,
+      onFunction,
+      'system.controller.ts',
+    ).setLogMessage(logMessage);
+
+    if (error && error.response === undefined)
+      errorForNext.setOriginalError(error);
+
+    if (error && error.response) errorForNext.setErrorObject(error.response);
+
+    if (error && error.sqlState)
+      errorForNext.setMessage(`Data base error. ${message}`);
+
+    return next(errorForNext.toJSON());
   };
 }
 

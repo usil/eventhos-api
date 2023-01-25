@@ -3,6 +3,10 @@ import { Knex } from 'knex';
 
 const knex = {} as any as Knex;
 
+jest.mock('nanoid', () => {
+  return { nanoid: () => '1234' };
+});
+
 const mockSecureExpress = {
   obPost: jest.fn(),
   obGet: jest.fn(),
