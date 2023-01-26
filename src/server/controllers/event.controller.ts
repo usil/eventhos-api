@@ -1145,7 +1145,6 @@ class EventControllers {
         );
 
         await this.mailService.sendMail({
-          from: 'usil@eventhos.com',
           to: receptorsOnError,
           text: 'There are errors in subscribe system',
           subject: 'Eventhos Informer on Error',
