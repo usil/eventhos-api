@@ -50,6 +50,8 @@ Following the [third commandment](https://12factor.net/config) we use environmen
 | SMTP_FROM_ALIAS                   | Should be able equal to the value of SMTP_USER           |            |
 | LOG_FILE_PATH                        | Use a file for the logs                        | false         |
 | LOG_LEVEL                            | Set the logger level                           | debug         |
+| RAW_SENSIBLE_PARAMS                          | Names of the keys that have sensitive values ​​sent when executing an event. <br>The values ​​of the keys sent here will be hidden. <br> Example: event-key, access-key, newkey                           |          |
+
 
 To use these variables in your developer workspace, check [this](https://github.com/usil/eventhos-api/wiki/for-developers)
 

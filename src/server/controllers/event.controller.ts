@@ -25,6 +25,7 @@ import { nanoid } from 'nanoid';
 import { MailService } from '../util/Mailer';
 import fs from 'fs';
 import { promisify } from 'util';
+import { objectObfuscate, stringObfuscate } from '../../helpers/general';
 
 const readFile = promisify(fs.readFile);
 
@@ -1124,10 +1125,12 @@ class EventControllers {
         );
         //event
         html = html.replace('@timestampEvent', now);
-        html = html.replace('@urlEvent', parsedReq.url);
+        let urlWithSensitiveValues = stringObfuscate(process.env.RAW_SENSIBLE_PARAMS, parsedReq.url);
+        html = html.replace('@urlEvent', urlWithSensitiveValues);
 
         html = html.replace('@bodyEvent', JSON.stringify(parsedBody));
-        html = html.replace('@headersEvent', JSON.stringify(parsedReq.headers));
+        let headersWithSensitiveValues = objectObfuscate(process.env.RAW_SENSIBLE_PARAMS, parsedReq.headers)
+        html = html.replace('@headersEvent', JSON.stringify(headersWithSensitiveValues));
         //subscriber
         html = html.replace('@timestampSubscriber', now);
         html = html.replace('@urlSubscriber', jsonAxiosBaseConfig.url);
