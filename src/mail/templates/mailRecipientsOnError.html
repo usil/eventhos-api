@@ -14,6 +14,10 @@ td, th {
   padding: 8px;
 }
 
+.headerTd {
+    width: 100px;
+}
+
 tr:nth-child(even) {
   background-color: #dddddd;
 }
@@ -22,23 +26,23 @@ tr:nth-child(even) {
 <body>
     <table>
         <tr>
-            <td>Contract</td>
+            <td class="headerTd">Contract</td>
             <td>@contract</td>
         </tr>
         <tr>
-            <td>When</td>
+            <td class="headerTd">When</td>
             <td>@when</td>
         </tr>
         <tr>
-            <td>In</td>
+            <td class="headerTd">In</td>
             <td>@inWhen</td>
         </tr>
         <tr>
-            <td>Then</td>
+            <td class="headerTd">Then</td>
             <td>@then</td>
         </tr>
         <tr>
-            <td>In</td>
+            <td class="headerTd">In</td>
             <td>@inThen</td>
         </tr>
     </table>
@@ -46,19 +50,19 @@ tr:nth-child(even) {
     <h3>Event Details</h3>
     <table>
         <tr>
-            <td>timestamp</td>
+            <td class="headerTd">timestamp</td>
             <td>@timestampEvent</td>
         </tr>
         <tr>
-            <td>Url</td>
+            <td class="headerTd">Url</td>
             <td>@urlEvent</td>
         </tr>
         <tr>
-            <td>Body</td>
+            <td class="headerTd">Body</td>
             <td>@bodyEvent</td>
         </tr>
         <tr>
-            <td>Headers</td>
+            <td class="headerTd">Headers</td>
             <td>@headersEvent</td>
         </tr>
     </table>
@@ -66,23 +70,23 @@ tr:nth-child(even) {
     <h3>Subscriber Response</h3>
     <table>
         <tr>
-            <td>timestamp</td>
+            <td class="headerTd">timestamp</td>
             <td>@timestampSubscriber</td>
         </tr>
         <tr>
-            <td>Url</td>
+            <td class="headerTd">Url</td>
             <td>@urlSubscriber</td>
         </tr>
         <tr>
-            <td>Http Status</td>
+            <td class="headerTd">Http Status</td>
             <td>@httpStatusSubscriber</td>
         </tr>
         <tr>
-            <td>Body</td>
+            <td class="headerTd">Body</td>
             <td>@bodySubscriber</td>
         </tr>
         <tr>
-            <td>Headers</td>
+            <td class="headerTd">Headers</td>
             <td>@headersSubscriber</td>
         </tr>
     </table>

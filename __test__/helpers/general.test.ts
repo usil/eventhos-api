@@ -31,46 +31,46 @@ describe('Paginates correctly', () => {
 describe('Replace raw sensitive params correctly on url path', () => {
   it('It must return the same text if the empty sensible parameters are sent', () => {
     let rawSensibleParams = '';
-    let text= `http://localhost:2109/event/send?event-identifier=evento_new-HN4TJKL26Q&access-key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiVFlaQ3dIV2FRcmdGNTRYb0pOekU6OnVzaWwuYXBwIiwic3ViamVjdFR5cGUiOiJjbGllbnQiLCJpZGVudGlmaWVyIjoiZGllZ28tdGVzdCJ9LCJpYXQiOjE2NzQ1OTg5OTZ9.9d6w39dss81HnN1wNb6-Pc0eeuQ3f2QgxN-grXOfCeo`;
+    let text= `http://localhost:2109/event/send?event-identifier=evento_new-Hsas&access-key=eyJhbGciOi`;
     const resp = stringObfuscate(rawSensibleParams, text)
     expect(resp).toBe(text)
   });
   it('It must return the same text if the sensitive parameters are sent with null value', () => {
     let rawSensibleParams = null;
-    let text= `http://localhost:2109/event/send?event-identifier=evento_new-HN4TJKL26Q&access-key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiVFlaQ3dIV2FRcmdGNTRYb0pOekU6OnVzaWwuYXBwIiwic3ViamVjdFR5cGUiOiJjbGllbnQiLCJpZGVudGlmaWVyIjoiZGllZ28tdGVzdCJ9LCJpYXQiOjE2NzQ1OTg5OTZ9.9d6w39dss81HnN1wNb6-Pc0eeuQ3f2QgxN-grXOfCeo`;
+    let text= `http://localhost:2109/event/send?event-identifier=evento_new-HN4TQ&access-key=eyJhbGciO`;
     const resp = stringObfuscate(rawSensibleParams, text)
     expect(resp).toBe(text)
   });
   it('It must return the same text if the sensitive parameters are sent with an undefined value.', () => {
     let rawSensibleParams = undefined;
-    let text= `http://localhost:2109/event/send?event-identifier=evento_new-HN4TJKL26Q&access-key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiVFlaQ3dIV2FRcmdGNTRYb0pOekU6OnVzaWwuYXBwIiwic3ViamVjdFR5cGUiOiJjbGllbnQiLCJpZGVudGlmaWVyIjoiZGllZ28tdGVzdCJ9LCJpYXQiOjE2NzQ1OTg5OTZ9.9d6w39dss81HnN1wNb6-Pc0eeuQ3f2QgxN-grXOfCeo`;
+    let text= `http://localhost:2109/event/send?event-identifier=evento_new-H26Q&access-key=eyJhbGciOi`;
     const resp = stringObfuscate(rawSensibleParams, text)
     expect(resp).toBe(text)
   });
   it('Must return the values ​​of the keys with **** if the keys exist', () => {
     let rawSensibleParams = "event-identifier, access-key";
-    let text= `http://localhost:2109/event/send?event-identifier=evento_new-HN4TJKL26Q&access-key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiVFlaQ3dIV2FRcmdGNTRYb0pOekU6OnVzaWwuYXBwIiwic3ViamVjdFR5cGUiOiJjbGllbnQiLCJpZGVudGlmaWVyIjoiZGllZ28tdGVzdCJ9LCJpYXQiOjE2NzQ1OTg5OTZ9.9d6w39dss81HnN1wNb6-Pc0eeuQ3f2QgxN-grXOfCeo`;
+    let text= `http://localhost:2109/event/send?event-identifier=evento_newL26Q&access-key=eyJhbGciO`;
     const resp = stringObfuscate(rawSensibleParams, text)
     const mockResp = 'http://localhost:2109/event/send?event-identifier=****&access-key=****'
     expect(resp).toBe(mockResp)
   });
   it('Should return the same text if the keys do not exist within the text', () => {
     let rawSensibleParams = "event-new, access-nokey";
-    let text= `http://localhost:2109/event/send?event-identifier=evento_new-HN4TJKL26Q&access-key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiVFlaQ3dIV2FRcmdGNTRYb0pOekU6OnVzaWwuYXBwIiwic3ViamVjdFR5cGUiOiJjbGllbnQiLCJpZGVudGlmaWVyIjoiZGllZ28tdGVzdCJ9LCJpYXQiOjE2NzQ1OTg5OTZ9.9d6w39dss81HnN1wNb6-Pc0eeuQ3f2QgxN-grXOfCeo`;
+    let text= `http://localhost:2109/event/send?event-identifier=evento_new-HN6Q&access-key=eyJhbGciOiJI`;
     const resp = stringObfuscate(rawSensibleParams, text)
     expect(resp).toBe(text)
   });
   it('It should return the values ​​of the keys with **** despite sending strange parameters as spaces', () => {
     let rawSensibleParams = "event -identi fier,  access-key ";
-    let text= `http://localhost:2109/event/send?event-identifier=evento_new-HN4TJKL26Q&access-key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiVFlaQ3dIV2FRcmdGNTRYb0pOekU6OnVzaWwuYXBwIiwic3ViamVjdFR5cGUiOiJjbGllbnQiLCJpZGVudGlmaWVyIjoiZGllZ28tdGVzdCJ9LCJpYXQiOjE2NzQ1OTg5OTZ9.9d6w39dss81HnN1wNb6-Pc0eeuQ3f2QgxN-grXOfCeo`;
+    let text= `http://localhost:2109/event/send?event-identifier=evento_newL26Q&access-key=eyJhbGciOiJ`;
     const mockResp = 'http://localhost:2109/event/send?event-identifier=****&access-key=****'
     const resp = stringObfuscate(rawSensibleParams, text)
     expect(resp).toBe(mockResp)
   });
   it('Keys must be independent, if only some keys exist within the text, they must be modified with ****', () => {
     let rawSensibleParams = "event-identifier,no-existe";
-    let text= `http://localhost:2109/event/send?event-identifier=evento_new-HN4TJKL26Q&access-key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiVFlaQ3dIV2FRcmdGNTRYb0pOekU6OnVzaWwuYXBwIiwic3ViamVjdFR5cGUiOiJjbGllbnQiLCJpZGVudGlmaWVyIjoiZGllZ28tdGVzdCJ9LCJpYXQiOjE2NzQ1OTg5OTZ9.9d6w39dss81HnN1wNb6-Pc0eeuQ3f2QgxN-grXOfCeo`;
-    const mockResp = 'http://localhost:2109/event/send?event-identifier=****&access-key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiVFlaQ3dIV2FRcmdGNTRYb0pOekU6OnVzaWwuYXBwIiwic3ViamVjdFR5cGUiOiJjbGllbnQiLCJpZGVudGlmaWVyIjoiZGllZ28tdGVzdCJ9LCJpYXQiOjE2NzQ1OTg5OTZ9.9d6w39dss81HnN1wNb6-Pc0eeuQ3f2QgxN-grXOfCeo'
+    let text= `http://localhost:2109/event/send?event-identifier=evento_new-JKL26Q&access-key=eyJhbdsdsdeo`;
+    const mockResp = 'http://localhost:2109/event/send?event-identifier=****&access-key=eyJhbdsdsdeo'
     const resp = stringObfuscate(rawSensibleParams, text)
     expect(resp).toBe(mockResp)
   });
@@ -172,7 +172,6 @@ describe('Replace raw sensitive params correctly on headers', () => {
     object= "text diferent";
     resp = objectObfuscate(rawSensibleParams, object as unknown as {});
     expect(resp).toBe(object);
-
   });
 });
 

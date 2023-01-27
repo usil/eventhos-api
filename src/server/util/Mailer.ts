@@ -63,7 +63,7 @@ export function MailService() {
     }
 
     const mailOptions = {
-      from: process.env.SMTP_FROM_ALIAS ?? '',
+      from: process.env.SMTP_FROM_ALIAS ?? process.env.SMTP_USER,
       to: params.to,
       subject: params.subject,
       html: params.html,
