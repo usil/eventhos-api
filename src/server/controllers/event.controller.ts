@@ -130,7 +130,7 @@ class EventControllers {
       to: process.env.SMTP_DEFAULT_RECIPIENT,
       text: message,
       html: `<b>${message}</b>`,
-      subject: 'Hello, I am eventhos mailer, I am informer of errors ✔',
+      subject: 'Eventhos error notification ' + new Date(),
     });
   };
   /**
@@ -1150,7 +1150,7 @@ class EventControllers {
         await this.mailService.sendMail({
           to: receptorsOnError,
           text: 'There are errors in subscribe system',
-          subject: 'Eventhos Informer on Error',
+          subject: 'Eventhos error notification ' + new Date(),
           html: html,
         });
       }
