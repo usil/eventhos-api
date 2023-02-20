@@ -25,6 +25,7 @@ import { nanoid } from 'nanoid';
 import { MailService } from '../util/Mailer';
 import fs from 'fs';
 import { promisify } from 'util';
+import { objectObfuscate, stringObfuscate } from '../../helpers/general';
 
 const readFile = promisify(fs.readFile);
 
@@ -129,7 +130,7 @@ class EventControllers {
       to: process.env.SMTP_DEFAULT_RECIPIENT,
       text: message,
       html: `<b>${message}</b>`,
-      subject: 'Hello, I am eventhos mailer, I am informer of errors ✔',
+      subject: 'Eventhos error notification ' + new Date(),
     });
   };
   /**
@@ -1124,10 +1125,12 @@ class EventControllers {
         );
         //event
         html = html.replace('@timestampEvent', now);
-        html = html.replace('@urlEvent', parsedReq.url);
+        let urlWithSensitiveValues = stringObfuscate(process.env.RAW_SENSIBLE_PARAMS, parsedReq.url);
+        html = html.replace('@urlEvent', urlWithSensitiveValues);
 
         html = html.replace('@bodyEvent', JSON.stringify(parsedBody));
-        html = html.replace('@headersEvent', JSON.stringify(parsedReq.headers));
+        let headersWithSensitiveValues = objectObfuscate(process.env.RAW_SENSIBLE_PARAMS, parsedReq.headers)
+        html = html.replace('@headersEvent', JSON.stringify(headersWithSensitiveValues));
         //subscriber
         html = html.replace('@timestampSubscriber', now);
         html = html.replace('@urlSubscriber', jsonAxiosBaseConfig.url);
@@ -1145,10 +1148,9 @@ class EventControllers {
         );
 
         await this.mailService.sendMail({
-          from: 'usil@eventhos.com',
           to: receptorsOnError,
           text: 'There are errors in subscribe system',
-          subject: 'Eventhos Informer on Error',
+          subject: 'Eventhos error notification ' + new Date(),
           html: html,
         });
       }

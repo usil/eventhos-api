@@ -42,13 +42,16 @@ Following the [third commandment](https://12factor.net/config) we use environmen
 | DATA_BASE_POOL_MAX                   | The maximum knex connection pool               | 300           |
 | SMTP_HOST                   | Sender identifier               |           |
 | SMTP_PORT                   | Communication endpoint that defines the routing of email transactions               |           |
-| SMTP_USER                   | User of your mail server               |            |
-| SMTP_PASSWORD                   | Password of your mail server               |           |
-| SMTP_SECURE                   | Encrypt               | true           |
+| SMTP_CREDENTIAL_USER                   | User of your mail server               |            |
+| SMTP_CREDENTIAL_PASSWORD                   | Password of your mail server               |           |
+| SMTP_SMTP_ENABLE_SSl                   | Encrypt. <br> If your host is for gmail, your value should be true. <br> If your host is for office 365, your value should be false               | true           |
 | SMTP_TLS_CIPHERS                   | Are algorithms that help secure network connections that use Transport Layer Security               |    SSLv3        |
 | SMTP_DEFAULT_RECIPIENT                   | Default recipients if there aren't recipients in a contract or if there are error before event's send               |            |
+| SMTP_FROM_ALIAS                   | Should be able equal to the value of SMTP_CREDENTIAL_USER           |            |
 | LOG_FILE_PATH                        | Use a file for the logs                        | false         |
 | LOG_LEVEL                            | Set the logger level                           | debug         |
+| RAW_SENSIBLE_PARAMS                          | Names of the keys that have sensitive values ​​sent when executing an event. <br>The values ​​of the keys sent here will be hidden. <br> Example: event-key, access-key, newkey                           |          |
+
 
 To use these variables in your developer workspace, check [this](https://github.com/usil/eventhos-api/wiki/for-developers)
 

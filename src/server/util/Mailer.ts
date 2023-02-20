@@ -15,18 +15,18 @@ export function MailService() {
     const smtpSettings = {
       host: process.env.SMTP_HOST,
       port: process.env.SMTP_PORT,
-      secure: process.env.SMTP_SECURE ?? true,
+      secure: process.env.SMTP_SMTP_ENABLE_SSl ?? true,
       tls: {
         ciphers: process.env.SMTP_TLS_CIPHERS ?? 'SSLv3',
       },
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD,
+        user: process.env.SMTP_CREDENTIAL_USER,
+        pass: process.env.SMTP_CREDENTIAL_PASSWORD,
       },
     };
 
-    if (process.env.SMTP_SECURE) {
-      smtpSettings.secure = JSON.parse(process.env.SMTP_SECURE.toLowerCase());
+    if (process.env.SMTP_SMTP_ENABLE_SSl) {
+      smtpSettings.secure = JSON.parse(process.env.SMTP_SMTP_ENABLE_SSl.toLowerCase());
     }
 
     if (process.env.SMTP_TLS_CIPHERS) {
@@ -63,7 +63,7 @@ export function MailService() {
     }
 
     const mailOptions = {
-      from: process.env.SMTP_FROM_ALIAS ?? params.from,
+      from: process.env.SMTP_FROM_ALIAS ?? process.env.SMTP_CREDENTIAL_USER,
       to: params.to,
       subject: params.subject,
       html: params.html,
@@ -75,7 +75,10 @@ export function MailService() {
     } catch (error) {
       configurationGlobal
         .log()
-        .error('Error while send message on error' + error);
+        .error('Error while send message on error for mail');
+      configurationGlobal
+        .log()
+        .error(error);
     }
   };
 }
