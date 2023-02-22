@@ -15,7 +15,7 @@ export function MailService() {
     const smtpSettings = {
       host: process.env.SMTP_HOST,
       port: process.env.SMTP_PORT,
-      secure: process.env.SMTP_SMTP_ENABLE_SSl ?? true,
+      secure: process.env.SMTP_SMTP_ENABLE_SSL ?? true,
       tls: {
         ciphers: process.env.SMTP_TLS_CIPHERS ?? 'SSLv3',
       },
@@ -25,8 +25,8 @@ export function MailService() {
       },
     };
 
-    if (process.env.SMTP_SMTP_ENABLE_SSl) {
-      smtpSettings.secure = JSON.parse(process.env.SMTP_SMTP_ENABLE_SSl.toLowerCase());
+    if (process.env.SMTP_SMTP_ENABLE_SSL) {
+      smtpSettings.secure = JSON.parse(process.env.SMTP_SMTP_ENABLE_SSL.toLowerCase());
     }
 
     if (process.env.SMTP_TLS_CIPHERS) {
