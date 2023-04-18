@@ -44,7 +44,7 @@ Following the [third commandment](https://12factor.net/config) we use environmen
 | SMTP_PORT                   | Communication endpoint that defines the routing of email transactions               |           |
 | SMTP_CREDENTIAL_USER                   | User of your mail server               |            |
 | SMTP_CREDENTIAL_PASSWORD                   | Password of your mail server               |           |
-| SMTP_SMTP_ENABLE_SSL                   | Encrypt. <br> If your host is for gmail, your value should be true. <br> If your host is for office 365, your value should be false               | true           |
+| SMTP_ENABLE_SSL                   | Encrypt. <br> If your host is for gmail, your value should be true. <br> If your host is for office 365, your value should be false               | true           |
 | SMTP_TLS_CIPHERS                   | Are algorithms that help secure network connections that use Transport Layer Security               |    SSLv3        |
 | SMTP_DEFAULT_RECIPIENT                   | Default recipients if there aren't recipients in a contract or if there are error before event's send               |            |
 | SMTP_FROM_ALIAS                   | Should be able equal to the value of SMTP_CREDENTIAL_USER           |            |
