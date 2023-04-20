@@ -23,7 +23,7 @@ services:
       SMTP_PORT: ${SMTP_PORT:-changeme}
       SMTP_CREDENTIAL_USER: ${SMTP_CREDENTIAL_USER:-changeme}
       SMTP_CREDENTIAL_PASSWORD: ${SMTP_CREDENTIAL_PASSWORD:-changeme}
-      SMTP_SMTP_ENABLE_SSl: "true"
+      SMTP_ENABLE_SSL: "true"
       SMTP_TLS_CIPHERS: SSLv3
       SMTP_DEFAULT_RECIPIENT: ${SMTP_DEFAULT_RECIPIENT:-changeme}
       TZ: America/Lima
