@@ -98,6 +98,14 @@ By default the app runs in the 2109 port.
 
 Once the application is running you can either use the eventhos platform (recommended) or use the endpoints that this api has.
 
+## Developed libraries
+
+| name | url | branch | description |
+| -----| --- | -------| ----------- |
+| advanced-settings | https://github.com/nodeboot/advanced-settings | main  | - |
+| nodeboot-oauth2-starter | https://github.com/usil/nodeboot-oauth2-starter#fix-validator-middleware | fix-validator-middleware | - |
+
+
 ## License
 
 [MIT](./LICENSE)
@@ -116,6 +124,12 @@ Once the application is running you can either use the eventhos platform (recomm
       <img src="https://avatars0.githubusercontent.com/u/3322836?s=460&v=4" width="100px;"/>
       <br />
       <label><a href="http://jrichardsz.github.io/">JRichardsz</a></label>
+      <br />
+    </td>
+    <td>
+      <img src="https://avatars.githubusercontent.com/u/66818290?s=400&u=d2f95a7497efd7fa830cf96fc2dc01120f27f3c5&v=4" width="100px;"/>
+      <br />
+      <label><a href="https://github.com/iSkyNavy">Diego Ramos</a></label>
       <br />
     </td>
   </tbody>
