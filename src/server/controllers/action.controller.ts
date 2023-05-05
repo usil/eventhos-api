@@ -4,7 +4,7 @@ import { Knex } from 'knex';
 import { getConfig } from '../../../config/main.config';
 import crypto from 'crypto';
 import controllerHelpers from './helpers/controller-helpers';
-import { Action } from '../dtos/eventhosInterface';
+import { Action, ActionWithSystem } from '../dtos/eventhosInterface';
 import { AxiosRequestConfig } from 'axios';
 import ErrorForNext from './helpers/ErrorForNext';
 import { nanoid } from 'nanoid';
@@ -317,12 +317,14 @@ class ActionControllers {
 
       const actionsQuery = this.knexPool
         .table('action')
+        .select("action.*", "system.name as system_name")
+        .join("system", "action.system_id", "system.id")
         .offset(offset)
         .limit(itemsPerPage)
-        .where('deleted', false)
+        .where('action.deleted', false)
         .orderBy(activeSort, order);
 
-      const systems = (await actionsQuery) as Action[];
+      const systems = (await actionsQuery) as ActionWithSystem[];
 
       return res.status(200).json({
         code: 200000,

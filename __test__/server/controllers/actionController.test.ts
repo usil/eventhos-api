@@ -441,7 +441,9 @@ describe('Actions controller functions work', () => {
 
     const knex = {
       table: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
+      join: jest.fn().mockReturnThis(),
       offset: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockResolvedValue([{ id: 1 }]),
@@ -458,7 +460,10 @@ describe('Actions controller functions work', () => {
 
     expect(knex.table).toHaveBeenCalledWith('action');
     expect(knex.offset).toHaveBeenCalledWith(0);
-    expect(knex.where).toHaveBeenCalledWith('deleted', false);
+    expect(knex.where).toHaveBeenCalledWith('action.deleted', false);
+    expect(knex.join).toHaveBeenCalledWith(
+      "system", "action.system_id", "system.id"
+    );
     expect(knex.count).toHaveBeenCalled();
     expect(knex.limit).toHaveBeenCalledWith(10);
 
