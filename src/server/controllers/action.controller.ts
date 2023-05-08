@@ -304,13 +304,17 @@ class ActionControllers {
 
   getActions = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const { actionName } = req.query;
       const { itemsPerPage, offset, pageIndex, order, activeSort } =
         controllerHelpers.getPaginationData(req);
 
-      const totalActionsCount = (
-        await this.knexPool.table('action').where('deleted', false).count()
-      )[0]['count(*)'];
+      const totalActionsCountQuery = this.knexPool.table('action').where('deleted', false).count();
 
+      if (actionName) {
+        totalActionsCountQuery.andWhere('name', 'like', '%' + actionName + '%');
+      }
+      
+      const totalActionsCount = (await totalActionsCountQuery)[0]['count(*)'];
       const totalPages = Math.ceil(
         parseInt(totalActionsCount as string) / itemsPerPage,
       );
@@ -323,6 +327,10 @@ class ActionControllers {
         .limit(itemsPerPage)
         .where('action.deleted', false)
         .orderBy(activeSort, order);
+
+      if (actionName) {
+        actionsQuery.andWhere('action.name', 'like', '%' + actionName + '%');
+      }
 
       const systems = (await actionsQuery) as ActionWithSystem[];
 
