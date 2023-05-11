@@ -304,34 +304,48 @@ class ActionControllers {
 
   getActions = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { actionName } = req.query;
+      const { wordSearch } = req.query;
       const { itemsPerPage, offset, pageIndex, order, activeSort } =
         controllerHelpers.getPaginationData(req);
 
-      const totalActionsCountQuery = this.knexPool.table('action').where('deleted', false).count();
-
-      if (actionName) {
-        totalActionsCountQuery.andWhere('name', 'like', '%' + actionName + '%');
-      }
+      const totalActionsCountQuery = 
+        this.knexPool
+          .table('action')
+          .select(
+            "action.*", 
+            "system.name as system_name"
+          )
+          .join("system", "action.system_id", "system.id")
+          .where('action.deleted', false)
+          .count();
       
-      const totalActionsCount = (await totalActionsCountQuery)[0]['count(*)'];
-      const totalPages = Math.ceil(
-        parseInt(totalActionsCount as string) / itemsPerPage,
-      );
-
       const actionsQuery = this.knexPool
         .table('action')
-        .select("action.*", "system.name as system_name")
+        .select(
+          "action.*", 
+          "system.name as system_name"
+        )
         .join("system", "action.system_id", "system.id")
         .offset(offset)
         .limit(itemsPerPage)
         .where('action.deleted', false)
-        .orderBy(activeSort, order);
+        .orderBy('action.id', order);
 
-      if (actionName) {
-        actionsQuery.andWhere('action.name', 'like', '%' + actionName + '%');
+      if (wordSearch) {
+        totalActionsCountQuery.andWhere('action.name', 'like', '%' + wordSearch + '%')
+        .orWhere('action.description', 'like', '%' + wordSearch + '%')
+        .orWhere('system.name', 'like', '%' + wordSearch + '%');
+
+        actionsQuery.andWhere('action.name', 'like', '%' + wordSearch + '%')
+        .orWhere('action.description', 'like', '%' + wordSearch + '%')
+        .orWhere('system.name', 'like', '%' + wordSearch + '%');
+
       }
 
+      const totalActionsCount = (await totalActionsCountQuery)[0]['count(*)'];
+      const totalPages = Math.ceil(
+        parseInt(totalActionsCount as string) / itemsPerPage,
+      );
       const systems = (await actionsQuery) as ActionWithSystem[];
 
       return res.status(200).json({

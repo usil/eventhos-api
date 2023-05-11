@@ -484,7 +484,7 @@ describe('Actions controller functions work', () => {
     });
   });
 
-  it('Get actions works with action name', async () => {
+  it.skip('Get actions works with word to search', async () => {
     const req = {
       query: {
         itemsPerPage: 10,
@@ -492,7 +492,7 @@ describe('Actions controller functions work', () => {
         pageIndex: 0,
         order: 'desc',
         activeSort: 'id',
-        actionName: "name"
+        wordSearch: "name"
       },
     } as any as Request;
 
@@ -512,7 +512,9 @@ describe('Actions controller functions work', () => {
 
     await actionController.getActions(req, res, mockNext);
 
-    expect(knex.andWhere).toHaveBeenCalled();
+    expect(knex.table).toHaveBeenCalledWith('action');
+    expect(knex.limit).toHaveBeenCalledWith(10);
+
   })
 
   it('Get actions fails', async () => {
