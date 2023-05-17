@@ -39,6 +39,9 @@ export class ConfigGlobalDto {
     key: string;
   };
   log: () => log4js.Logger;
+  server: {
+    httpBodySizeLimit: string;
+  };
 }
 
 export default new ConfigGlobalDto();

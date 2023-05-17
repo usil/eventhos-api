@@ -17,6 +17,7 @@
     "advanced-settings": "git+https://github.com/nodeboot/advanced-settings.git",
     "axios": "^0.24.0",
     "bcrypt": "^5.0.1",
+    "body-parser": "^1.20.2",
     "chalk": "^4.1.2",
     "colors": "^1.4.0",
     "compression": "^1.7.4",

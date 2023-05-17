@@ -26,6 +26,9 @@
   "encryption": {
     "key": "${CRYPTO_KEY}"
   },
+  "server": {
+    "httpBodySizeLimit": "${HTTP_BODY_SIZE_LIMIT}"
+  },
   "queue": {
     "active": "${USE_QUEUE}",
     "host": "${QUEUE_HOST}",

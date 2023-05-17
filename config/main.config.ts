@@ -76,5 +76,7 @@ export const getConfig = () => {
 
   configuration.log = (): log4js.Logger => logger;
 
+  configuration.server.httpBodySizeLimit = settings.server.httpBodySizeLimit || "50mb"
+
   return configuration;
 };
