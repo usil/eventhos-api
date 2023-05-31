@@ -51,6 +51,7 @@ Following the [third commandment](https://12factor.net/config) we use environmen
 | LOG_FILE_PATH                        | Use a file for the logs                        | false         |
 | LOG_LEVEL                            | Set the logger level                           | debug         |
 | RAW_SENSIBLE_PARAMS                          | Names of the keys that have sensitive values ​​sent when executing an event. <br>The values ​​of the keys sent here will be hidden. <br> Example: event-key, access-key, newkey                           |          |
+| HTTP_BODY_SIZE_LIMIT     |   Supported size of the json that interacts with the app   | 50mb         |
 
 
 To use these variables in your developer workspace, check [this](https://github.com/usil/eventhos-api/wiki/for-developers)
