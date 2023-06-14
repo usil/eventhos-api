@@ -36,7 +36,6 @@ export const stringObfuscate = (rawSensibleParams: any, text: string) => {
   rawSensibleParams = rawSensibleParams.concat(',');
   let paramsArr = rawSensibleParams.match(regex);
   paramsArr?.map((param: string) => {
-      // let currentRegex =new RegExp(`(?<=` + param + `=)([a-z]+\s*)+[^&]+`, 'g');
       let currentRegex =new RegExp(`(?<=` + param + `=)([a-zA-Z0-9]+\s*)+[^&]+`, 'g');
       text = text.replace(currentRegex, '****');
   })

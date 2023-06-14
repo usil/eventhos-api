@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { Knex } from 'knex';
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { async, concat, defer, merge, Observable, take } from 'rxjs';
+import { concat, defer, merge, Observable, take } from 'rxjs';
 import {
   Action,
   ActionSecurity,
@@ -1104,86 +1104,7 @@ class EventControllers {
           receptorsOnError = this.configuration.smtp.defaultRecipients;
         } else {
           receptorsOnError = eventContract.contract.mail_recipients_on_error;
-        }
-        /* let html = await readFile(
-          'src/mail/templates/mailRecipientsOnError.html',
-          'utf8',
-        );
-        const today = new Date();
-        const now = today.toLocaleString();
-        const jsonAxiosBaseConfig = JSON.parse(
-          await this.decryptString(eventContract.action.http_configuration),
-        ) as AxiosRequestConfig;
-        const rawSensibleParams = this.configuration.smtp.rawSensibleParams;
-        html = html.replace('@contract', eventContract.contract.identifier);
-        html = html.replace(
-          '@when',
-          eventContract.event.identifier +
-          ' - ' +
-          eventContract.event.description,
-        );
-        html = html.replace(
-          '@inWhen',
-          eventContract.system_producer?.name +
-          ' - ' +
-          eventContract.system_producer?.description,
-        );
-        html = html.replace(
-          '@then',
-          eventContract.action.identifier +
-          ' - ' +
-          eventContract.action.description,
-        );
-        html = html.replace(
-          '@inThen',
-          eventContract.system_consumer?.name +
-          ' - ' +
-          eventContract.system_consumer?.description,
-        );
-        //event
-        html = html.replace('@eventLogIdentifier', receivedEvent[0].toString());
-        html = html.replace('@timestampEvent', now);
-        let urlWithSensitiveValues = stringObfuscate(rawSensibleParams, parsedReq.url);
-        html = html.replace('@urlEvent', urlWithSensitiveValues);
-        
-        let bodyWithSensibleParms: string | object;
-        if (typeof parsedBody === "string") {
-          bodyWithSensibleParms = stringObfuscate(rawSensibleParams, parsedBody);
-        }else if (typeof parsedBody === "object") {
-          bodyWithSensibleParms = objectObfuscate(rawSensibleParams, parsedBody);
-        } else {
-          bodyWithSensibleParms = parsedBody ?? {};
-        }
-        html = html.replace('@bodyEvent', JSON.stringify(bodyWithSensibleParms));
-        let headersWithSensitiveValues = objectObfuscate(rawSensibleParams, parsedReq.headers)
-        html = html.replace('@headersEvent', JSON.stringify(headersWithSensitiveValues));
-        //subscriber
-        html = html.replace('@timestampSubscriber', now);
-        // let urlSubscriberWithSensitiveValues = stringObfuscate(rawSensibleParams, jsonAxiosBaseConfig.url);
-        let urlSubscriberWithSensitiveValues = stringObfuscate(rawSensibleParams, error?.response?.request?.res?.responseUrl ?? jsonAxiosBaseConfig.url);
-        html = html.replace('@urlSubscriber', urlSubscriberWithSensitiveValues);
-        html = html.replace(
-          '@httpStatusSubscriber',
-          error.response?.status ?? 500,
-        );
-        let bodySubscriberWithSensibleParms: string | object;
-        if (typeof error.response?.data === "string") {
-          bodySubscriberWithSensibleParms = stringObfuscate(rawSensibleParams, error.response?.data);
-        }else if (typeof error.response?.data === "object") {
-          bodySubscriberWithSensibleParms = objectObfuscate(rawSensibleParams, error.response?.data);
-        } else {
-          bodySubscriberWithSensibleParms = error.response?.data ?? {};
-        }
-        html = html.replace(
-          '@bodySubscriber',
-          JSON.stringify(bodySubscriberWithSensibleParms),
-        );
-        let headersSubscriberWithSensitiveValues = objectObfuscate(rawSensibleParams, error.response?.headers)
-
-        html = html.replace(
-          '@headersSubscriber',
-          JSON.stringify(headersSubscriberWithSensitiveValues ?? {}),
-        ); */
+        };
         let mailTemplate = await readFile(
           'src/mail/templates/mailRecipientsOnError.html',
           'utf8',
@@ -1219,12 +1140,6 @@ class EventControllers {
             mailTemplate, 
             now, 
             rawSensibleParams,
-            /* jsonAxiosBaseConfig.url,
-            eventContract,
-            receivedEventId,
-            parsedBody,
-            parsedReq,
-            error, */
             paramsHtml
           );
         if (this.configuration.smtp.host && !this.configuration.smtp.host.includes("${")) {

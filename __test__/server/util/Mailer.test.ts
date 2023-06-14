@@ -1,7 +1,4 @@
 const {default: MailService} = require( '../../../src/server/util/Mailer');
-const nodemailer = require('nodemailer');
-const path = require("path");
-const { v4 } = require("uuid");
 const SMTPTester = require("smtp-tester");
 import fs from 'fs';
 import { promisify } from 'util';
