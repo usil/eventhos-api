@@ -35,8 +35,9 @@ export const stringObfuscate = (rawSensibleParams: any, text: string) => {
   const regex = /(([a-zA-Z0-9\s\_\-])+(?=\,))/g;
   rawSensibleParams = rawSensibleParams.concat(',');
   let paramsArr = rawSensibleParams.match(regex);
-  paramsArr.map((param: string) => {
-      let currentRegex =new RegExp(`(?<=` + param + `=)([a-z]+\s*)+[^&]+`, 'g');
+  paramsArr?.map((param: string) => {
+      // let currentRegex =new RegExp(`(?<=` + param + `=)([a-z]+\s*)+[^&]+`, 'g');
+      let currentRegex =new RegExp(`(?<=` + param + `=)([a-zA-Z0-9]+\s*)+[^&]+`, 'g');
       text = text.replace(currentRegex, '****');
   })
   return text;
@@ -51,7 +52,7 @@ export const objectObfuscate = (rawSensibleParams: any, object: Record<string, a
   rawSensibleParams = rawSensibleParams.concat(',');
   let paramsArr = rawSensibleParams.match(regex);
   const keysArr = Object.keys(object);
-  paramsArr.map((param: string) => {
+  paramsArr?.map((param: string) => {
       if (keysArr.includes(param)) {
           object[param] = "****";
       }

@@ -22,10 +22,11 @@ import { Client } from 'stompit';
 import { ConfigGlobalDto } from '../../../config/config.dto';
 import ErrorForNext from './helpers/ErrorForNext';
 import { nanoid } from 'nanoid';
-import { MailService } from '../util/Mailer';
+// import { MailService } from '../util/Mailer';
 import fs from 'fs';
 import { promisify } from 'util';
 import { objectObfuscate, stringObfuscate } from '../../helpers/general';
+import MailService from '../util/Mailer';
 
 const readFile = promisify(fs.readFile);
 
@@ -51,13 +52,14 @@ interface EventContract {
   system_producer?: System;
   system_consumer?: System;
 }
+
 class EventControllers {
   configuration = getConfig();
   knexPool: Knex;
   scryptPromise = util.promisify(crypto.scrypt);
   encryptionKey: Buffer;
   queueClient: Client;
-  mailService = new (MailService as any)();
+  mailService = new MailService();
 
   constructor(knexPool: Knex, encryptionKey: Buffer, queueClient?: Client) {
     this.knexPool = knexPool;
@@ -126,12 +128,20 @@ class EventControllers {
     client.ack(message);
   }
   sendMailToEventhosManagersOnError = async (message: string) => {
-    await this.mailService.sendMail({
-      to: process.env.SMTP_DEFAULT_RECIPIENT,
+    const smtpParams = {
+      to: this.configuration.smtp.defaultRecipients,
       text: message,
       html: `<b>${message}</b>`,
-      subject: 'Eventhos error notification ' + new Date(),
-    });
+      subject: this.mailService.getSubject(),
+      smtpHost: this.configuration.smtp.host,
+      smtpPort: this.configuration.smtp.port,
+      smtpUser: this.configuration.smtp.user,
+      smtpPassword: this.configuration.smtp.password,
+      smtpTlsCiphers: this.configuration.smtp.tlsCiphers,
+      smtpSecure: this.configuration.smtp.enableSSL,
+      smtpAlias: this.configuration.smtp.alias
+    }
+    await this.mailService.sendMail(smtpParams);
   };
   /**
    *
@@ -164,10 +174,10 @@ class EventControllers {
         .first()
         .where('event.identifier', eventIdentifier)
         .andWhere('event.deleted', false)) as {
-        client_id: number;
-        identifier: string;
-        id: number;
-      };
+          client_id: number;
+          identifier: string;
+          id: number;
+        };
 
       if (!event) {
         this.sendMailToEventhosManagersOnError(
@@ -423,13 +433,13 @@ class EventControllers {
         .where('contract.event_id', res.locals.eventId)
         .where('contract.active', true)
         .andWhere('contract.deleted', false)) as {
-        action: Action;
-        event: Event;
-        contract: Contract;
-        action_security: ActionSecurity;
-        system_producer: any;
-        system_consumer: any;
-      }[];
+          action: Action;
+          event: Event;
+          contract: Contract;
+          action_security: ActionSecurity;
+          system_producer: any;
+          system_consumer: any;
+        }[];
       if (eventContracts.length === 0) {
         const basicRequest = {
           headers: req.headers,
@@ -912,13 +922,13 @@ class EventControllers {
   ) => {
     const mergedContractExecutions: Observable<
       | {
-          message: string;
-          error?: undefined;
-        }
+        message: string;
+        error?: undefined;
+      }
       | {
-          message: string;
-          error: any;
-        }
+        message: string;
+        error: any;
+      }
     >[] = [];
 
     for (const ocKey in orderedContracts) {
@@ -940,13 +950,13 @@ class EventControllers {
   handlePostContractExecution = (
     res:
       | {
-          message: string;
-          error?: undefined;
-        }
+        message: string;
+        error?: undefined;
+      }
       | {
-          message: string;
-          error: any;
-        },
+        message: string;
+        error: any;
+      },
     logger: Logger,
   ) => {
     if (res.error) {
@@ -1053,6 +1063,7 @@ class EventControllers {
         });
         jsonAxiosBaseConfig.url = parsedUrl;
       }
+
       const httpConfiguration: AxiosRequestConfig = {
         url: jsonAxiosBaseConfig.url,
         method: jsonAxiosBaseConfig.method,
@@ -1068,24 +1079,29 @@ class EventControllers {
         ...httpConfiguration,
         timeout: getConfig().subscription.timeout,
       });
-      await this.handleContractExecution(result, eventContract, receivedEvent);
 
+      await this.handleContractExecution(result, eventContract, receivedEvent);
       return {
         message: `Contract with id ${eventContract.contract.id} executed successfully`,
       };
     } catch (error) {
+
       if (error.isAxiosError) {
-        this.handleContractExecutionError(
+        let contractExecutionId;
+        await this.handleContractExecutionError(
           error,
           eventContract,
           receivedEvent,
-        ).then(() => getConfig().log().info('Error saved'));
+        ).then((data) => {
+          getConfig().log().info('Error saved');
+          contractExecutionId = data;
+        });
         let receptorsOnError = '';
         if (
           eventContract.contract.mail_recipients_on_error.length === 0 ||
           eventContract.contract.mail_recipients_on_error.length === null
         ) {
-          receptorsOnError = process.env.SMTP_DEFAULT_RECIPIENT;
+          receptorsOnError = this.configuration.smtp.defaultRecipients;
         } else {
           receptorsOnError = eventContract.contract.mail_recipients_on_error;
         }
@@ -1098,60 +1114,88 @@ class EventControllers {
         const jsonAxiosBaseConfig = JSON.parse(
           await this.decryptString(eventContract.action.http_configuration),
         ) as AxiosRequestConfig;
+        const rawSensibleParams = this.configuration.smtp.rawSensibleParams;
+        html = html.replace('@eventLogIdentifier', contractExecutionId);
         html = html.replace('@contract', eventContract.contract.identifier);
         html = html.replace(
           '@when',
           eventContract.event.identifier +
-            ' - ' +
-            eventContract.event.description,
+          ' - ' +
+          eventContract.event.description,
         );
         html = html.replace(
           '@inWhen',
-          eventContract.system_producer?.identifier +
-            ' - ' +
-            eventContract.system_producer?.description,
+          eventContract.system_producer?.name +
+          ' - ' +
+          eventContract.system_producer?.description,
         );
         html = html.replace(
           '@then',
           eventContract.action.identifier +
-            ' - ' +
-            eventContract.action.description,
+          ' - ' +
+          eventContract.action.description,
         );
         html = html.replace(
           '@inThen',
-          eventContract.system_consumer?.identifier +
-            ' - ' +
-            eventContract.system_consumer?.description,
+          eventContract.system_consumer?.name +
+          ' - ' +
+          eventContract.system_consumer?.description,
         );
         //event
         html = html.replace('@timestampEvent', now);
-        let urlWithSensitiveValues = stringObfuscate(process.env.RAW_SENSIBLE_PARAMS, parsedReq.url);
+        let urlWithSensitiveValues = stringObfuscate(rawSensibleParams, parsedReq.url);
         html = html.replace('@urlEvent', urlWithSensitiveValues);
-
-        html = html.replace('@bodyEvent', JSON.stringify(parsedBody));
-        let headersWithSensitiveValues = objectObfuscate(process.env.RAW_SENSIBLE_PARAMS, parsedReq.headers)
+        
+        let bodyWithSensibleParms: string | object;
+        if (typeof parsedBody === "string") {
+          bodyWithSensibleParms = stringObfuscate(rawSensibleParams, parsedBody);
+        }else if (typeof parsedBody === "object") {
+          bodyWithSensibleParms = objectObfuscate(rawSensibleParams, parsedBody);
+        } else {
+          bodyWithSensibleParms = parsedBody ?? {};
+        }
+        html = html.replace('@bodyEvent', JSON.stringify(bodyWithSensibleParms));
+        let headersWithSensitiveValues = objectObfuscate(rawSensibleParams, parsedReq.headers)
         html = html.replace('@headersEvent', JSON.stringify(headersWithSensitiveValues));
         //subscriber
         html = html.replace('@timestampSubscriber', now);
-        html = html.replace('@urlSubscriber', jsonAxiosBaseConfig.url);
+        // let urlSubscriberWithSensitiveValues = stringObfuscate(rawSensibleParams, jsonAxiosBaseConfig.url);
+        let urlSubscriberWithSensitiveValues = stringObfuscate(rawSensibleParams, error?.response?.request?.res?.responseUrl ?? jsonAxiosBaseConfig.url);
+        html = html.replace('@urlSubscriber', urlSubscriberWithSensitiveValues);
         html = html.replace(
           '@httpStatusSubscriber',
           error.response?.status ?? 500,
         );
+        let bodySubscriberWithSensibleParms: string | object;
+        if (typeof error.response?.data === "string") {
+          bodySubscriberWithSensibleParms = stringObfuscate(rawSensibleParams, error.response?.data);
+        }else if (typeof error.response?.data === "object") {
+          bodySubscriberWithSensibleParms = objectObfuscate(rawSensibleParams, error.response?.data);
+        } else {
+          bodySubscriberWithSensibleParms = error.response?.data ?? {};
+        }
         html = html.replace(
           '@bodySubscriber',
-          JSON.stringify(error.response?.data ?? {}),
+          JSON.stringify(bodySubscriberWithSensibleParms),
         );
+        let headersSubscriberWithSensitiveValues = objectObfuscate(rawSensibleParams, error.response?.headers)
+
         html = html.replace(
           '@headersSubscriber',
-          JSON.stringify(error.response?.headers ?? {}),
+          JSON.stringify(headersSubscriberWithSensitiveValues ?? {}),
         );
-
         await this.mailService.sendMail({
           to: receptorsOnError,
           text: 'There are errors in subscribe system',
-          subject: 'Eventhos error notification ' + new Date(),
+          subject: this.mailService.getSubject(),
           html: html,
+          smtpHost: this.configuration.smtp.host,
+          smtpPort: this.configuration.smtp.port,
+          smtpUser: this.configuration.smtp.user,
+          smtpPassword: this.configuration.smtp.password,
+          smtpTlsCiphers: this.configuration.smtp.tlsCiphers,
+          smtpSecure: this.configuration.smtp.enableSSL,
+          smtpAlias: this.configuration.smtp.alias
         });
       }
       return {
@@ -1208,6 +1252,7 @@ class EventControllers {
           '|.|' +
           encryptResultResponse.encryptedData,
       });
+      return excDetail[0];
     } catch (lastError) {
       logger.error(lastError);
     }
@@ -1264,8 +1309,11 @@ class EventControllers {
           '|.|' +
           encryptResultRequest.encryptedData,
       });
+      return "Kkkk"
     } catch (error) {
       getConfig().log().error(error);
+      return "Kkkk"
+
     }
   };
 
@@ -1614,7 +1662,7 @@ class EventControllers {
       if (
         index === 0 ||
         baseSearch[index][differentiator] !==
-          baseSearch[index - 1][differentiator]
+        baseSearch[index - 1][differentiator]
       ) {
         for (const similarField of similarFields) {
           const temporalFieldValue = baseSearch[index][similarField];

@@ -1,69 +1,71 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { getConfig } from '../../../config/main.config';
 import { MailOptions } from 'nodemailer/lib/json-transport';
+import { Transporter } from 'nodemailer';
 const nodemailer = require('nodemailer');
 
-export function MailService() {
-  this.transporter;
-  const configurationGlobal = getConfig();
+interface ISmtpParams {
+  smtpHost: string;
+  smtpPort: string | number;
+  smtpSecure: boolean;
+  smtpTlsCiphers: string;
+  smtpUser: string;
+  smtpPassword: string
+  smtpAlias?: string;
+}
 
-  this.initialize = () => {
+class MailService {
+  protected transporter: Transporter ;
+  private configurationGlobal = getConfig();
+
+  protected initialize = (smtpParams: ISmtpParams) => {
     if (typeof this.transporter !== 'undefined') {
       return;
     }
-
     const smtpSettings = {
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      secure: process.env.SMTP_ENABLE_SSL ?? true,
+      host: smtpParams?.smtpHost,
+      port: smtpParams?.smtpPort,
+      secure: smtpParams?.smtpSecure ?? true,
       tls: {
-        ciphers: process.env.SMTP_TLS_CIPHERS ?? 'SSLv3',
+        ciphers: smtpParams?.smtpTlsCiphers ?? 'SSLv3',
       },
       auth: {
-        user: process.env.SMTP_CREDENTIAL_USER,
-        pass: process.env.SMTP_CREDENTIAL_PASSWORD,
+        user: smtpParams?.smtpUser,
+        pass: smtpParams?.smtpPassword,
       },
     };
-
-    if (process.env.SMTP_ENABLE_SSL) {
-      smtpSettings.secure = JSON.parse(process.env.SMTP_ENABLE_SSL.toLowerCase());
-    }
-
-    if (process.env.SMTP_TLS_CIPHERS) {
-      smtpSettings.tls.ciphers = process.env.SMTP_TLS_CIPHERS;
-    }
 
     this.transporter = nodemailer.createTransport(smtpSettings);
   };
 
-  this.sendMail = async (params: MailOptions) => {
-    this.initialize();
+  public sendMail = async (params: MailOptions & ISmtpParams) => {
+    this.initialize(params);
 
-    if (typeof params == 'undefined') {
-      configurationGlobal
+    if (typeof params == "undefined" || !params) {
+      this.configurationGlobal
         .log()
         .error('Error: Params is required to send an email');
       return;
     }
     if (typeof params.to == 'undefined') {
-      configurationGlobal.log().error('Error: To is required to send an email');
+      this.configurationGlobal.log().error('Error: To is required to send an email');
       return;
     }
     if (typeof params.subject == 'undefined') {
-      configurationGlobal
+      this.configurationGlobal
         .log()
         .error('Error: Subject is required to send an email');
       return;
     }
     if (typeof params.html == 'undefined') {
-      configurationGlobal
+      this.configurationGlobal
         .log()
         .error('Error: Html message is required to send an email');
       return;
     }
 
     const mailOptions = {
-      from: process.env.SMTP_FROM_ALIAS ?? process.env.SMTP_CREDENTIAL_USER,
+      from: params?.smtpAlias ?? params?.smtpUser,
       to: params.to,
       subject: params.subject,
       html: params.html,
@@ -71,14 +73,23 @@ export function MailService() {
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      configurationGlobal.log().info('Email sent:' + info.response);
+      this.configurationGlobal.log().info('Email sent:' + info.response);
+      return info;
     } catch (error) {
-      configurationGlobal
+      this.configurationGlobal
         .log()
         .error('Error while send message on error for mail');
-      configurationGlobal
+      this.configurationGlobal
         .log()
         .error(error);
     }
   };
+
+  public getSubject = () : string => {
+    const subjectMode = this.configurationGlobal.smtp.subjectMode;
+    const subject = `Eventhos ${subjectMode && !subjectMode.includes("${") ? "[" + subjectMode + "]" : ""} error notification ` + new Date();
+    return subject;
+  }
 }
+
+export default MailService;

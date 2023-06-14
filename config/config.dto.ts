@@ -42,6 +42,18 @@ export class ConfigGlobalDto {
   server: {
     httpBodySizeLimit: string;
   };
+  smtp: {
+    subjectMode: string;
+    rawSensibleParams: string;
+    host: string;
+    port: number;
+    enableSSL: boolean
+    tlsCiphers: string;
+    user: string;
+    password: string;
+    alias: string;
+    defaultRecipients: string;
+  };
 }
 
 export default new ConfigGlobalDto();
