@@ -80,16 +80,14 @@ export const getConfig = () => {
   configuration.smtp.subjectMode = settings.smtp.subjectMode || "";
   configuration.smtp.rawSensibleParams = settings.smtp.rawSensibleParams || "";
 
-  configuration.smtp.host = settings.smtp.host || "";
-  configuration.smtp.port = settings.smtp.port || "";
-  configuration.smtp.enableSSL = settings.smtp.enableSSL || "";
-  configuration.smtp.alias = settings.smtp.alias || "";
-  configuration.smtp.tlsCiphers = settings.smtp.tlsCiphers || "";
-  configuration.smtp.user = settings.smtp.user || "";
-  configuration.smtp.password = settings.smtp.password || "";
-  configuration.smtp.defaultRecipients = settings.smtp.defaultRecipients || "";
-
-
+  configuration.smtp.host = settings.smtp.host;
+  configuration.smtp.port = settings.smtp.port;
+  configuration.smtp.enableSSL = settings.smtp.enableSSL;
+  configuration.smtp.alias = settings.smtp.alias;
+  configuration.smtp.tlsCiphers = settings.smtp.tlsCiphers;
+  configuration.smtp.user = settings.smtp.user;
+  configuration.smtp.password = settings.smtp.password;
+  configuration.smtp.defaultRecipients = settings.smtp.defaultRecipients;
 
 
   return configuration;

@@ -22,10 +22,8 @@ import { Client } from 'stompit';
 import { ConfigGlobalDto } from '../../../config/config.dto';
 import ErrorForNext from './helpers/ErrorForNext';
 import { nanoid } from 'nanoid';
-// import { MailService } from '../util/Mailer';
 import fs from 'fs';
 import { promisify } from 'util';
-import { objectObfuscate, stringObfuscate } from '../../helpers/general';
 import MailService from '../util/Mailer';
 
 const readFile = promisify(fs.readFile);
@@ -44,7 +42,7 @@ interface ContractsExecutionBody {
     };
   };
 }
-interface EventContract {
+export interface EventContract {
   action: Action;
   event: Event;
   contract: Contract;
@@ -141,7 +139,11 @@ class EventControllers {
       smtpSecure: this.configuration.smtp.enableSSL,
       smtpAlias: this.configuration.smtp.alias
     }
-    await this.mailService.sendMail(smtpParams);
+    
+    if (this.configuration.smtp.host && !this.configuration.smtp.host.includes("${")) {
+      await this.mailService.sendMail(smtpParams);
+    }
+
   };
   /**
    *
@@ -1087,14 +1089,12 @@ class EventControllers {
     } catch (error) {
 
       if (error.isAxiosError) {
-        let contractExecutionId;
         await this.handleContractExecutionError(
           error,
           eventContract,
           receivedEvent,
         ).then((data) => {
-          getConfig().log().info('Error saved');
-          contractExecutionId = data;
+          getConfig().log().info('Error saved');          
         });
         let receptorsOnError = '';
         if (
@@ -1105,7 +1105,7 @@ class EventControllers {
         } else {
           receptorsOnError = eventContract.contract.mail_recipients_on_error;
         }
-        let html = await readFile(
+        /* let html = await readFile(
           'src/mail/templates/mailRecipientsOnError.html',
           'utf8',
         );
@@ -1115,7 +1115,6 @@ class EventControllers {
           await this.decryptString(eventContract.action.http_configuration),
         ) as AxiosRequestConfig;
         const rawSensibleParams = this.configuration.smtp.rawSensibleParams;
-        html = html.replace('@eventLogIdentifier', contractExecutionId);
         html = html.replace('@contract', eventContract.contract.identifier);
         html = html.replace(
           '@when',
@@ -1142,6 +1141,7 @@ class EventControllers {
           eventContract.system_consumer?.description,
         );
         //event
+        html = html.replace('@eventLogIdentifier', receivedEvent[0].toString());
         html = html.replace('@timestampEvent', now);
         let urlWithSensitiveValues = stringObfuscate(rawSensibleParams, parsedReq.url);
         html = html.replace('@urlEvent', urlWithSensitiveValues);
@@ -1183,20 +1183,65 @@ class EventControllers {
         html = html.replace(
           '@headersSubscriber',
           JSON.stringify(headersSubscriberWithSensitiveValues ?? {}),
+        ); */
+        let mailTemplate = await readFile(
+          'src/mail/templates/mailRecipientsOnError.html',
+          'utf8',
         );
-        await this.mailService.sendMail({
-          to: receptorsOnError,
-          text: 'There are errors in subscribe system',
-          subject: this.mailService.getSubject(),
-          html: html,
-          smtpHost: this.configuration.smtp.host,
-          smtpPort: this.configuration.smtp.port,
-          smtpUser: this.configuration.smtp.user,
-          smtpPassword: this.configuration.smtp.password,
-          smtpTlsCiphers: this.configuration.smtp.tlsCiphers,
-          smtpSecure: this.configuration.smtp.enableSSL,
-          smtpAlias: this.configuration.smtp.alias
-        });
+        const today = new Date();
+        const now = today.toLocaleString();
+        const jsonAxiosBaseConfig = JSON.parse(
+          await this.decryptString(eventContract.action.http_configuration),
+        ) as AxiosRequestConfig;
+        const rawSensibleParams = this.configuration.smtp.rawSensibleParams;
+        const receivedEventId = receivedEvent[0].toString();
+        const paramsHtml = {
+          eventContractContractIdentifier: eventContract.contract.identifier,
+          eventContractEventIdentifier: eventContract.event.identifier,
+          eventContractEventDescription: eventContract.event.description,
+          eventContractSystemProducerName: eventContract.system_producer.name,
+          eventContractSystemProducerDescription: eventContract.system_producer.description,
+          eventContractActionIdentifier: eventContract.action.identifier,
+          eventContractActionDescription: eventContract.action.description,
+          eventContractSystemConsumerName: eventContract.system_consumer.name,
+          eventContractSystemConsumerDescription: eventContract.system_consumer.description,
+          receivedEventId: receivedEventId,
+          parsedBody: parsedBody,
+          parsedReqUrl: parsedReq.url,
+          parsedReqHeaders: parsedReq.headers,
+          errorResponseRequestResponseUrl: error?.response?.request?.res?.responseUrl ?? jsonAxiosBaseConfig.url,
+          errorResponseStatus: error.response?.status ?? 500,
+          errorResponseData: error.response?.data,
+          errorResponseHeaders: error.response?.headers
+        }
+        const html = 
+          this.mailService.replaceHtmlToSendByMail(
+            mailTemplate, 
+            now, 
+            rawSensibleParams,
+            /* jsonAxiosBaseConfig.url,
+            eventContract,
+            receivedEventId,
+            parsedBody,
+            parsedReq,
+            error, */
+            paramsHtml
+          );
+        if (this.configuration.smtp.host && !this.configuration.smtp.host.includes("${")) {
+          await this.mailService.sendMail({
+            to: receptorsOnError,
+            text: 'There are errors in subscribe system',
+            subject: this.mailService.getSubject(),
+            html: html,
+            smtpHost: this.configuration.smtp.host,
+            smtpPort: this.configuration.smtp.port,
+            smtpUser: this.configuration.smtp.user,
+            smtpPassword: this.configuration.smtp.password,
+            smtpTlsCiphers: this.configuration.smtp.tlsCiphers,
+            smtpSecure: this.configuration.smtp.enableSSL,
+            smtpAlias: this.configuration.smtp.alias
+          });
+        }
       }
       return {
         message: `Error while executing contract with id ${eventContract.contract.id}`,
@@ -1309,11 +1354,8 @@ class EventControllers {
           '|.|' +
           encryptResultRequest.encryptedData,
       });
-      return "Kkkk"
     } catch (error) {
       getConfig().log().error(error);
-      return "Kkkk"
-
     }
   };
 
