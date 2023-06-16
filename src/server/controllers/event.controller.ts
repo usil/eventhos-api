@@ -1405,16 +1405,17 @@ class EventControllers {
     res: Response,
     next: NextFunction,
   ) => {
+    
     try {
       const { itemsPerPage, offset, pageIndex, order } =
         controllerHelpers.getPaginationData(req);
 
-      const { systemId, fromTime, toTime } = req.query;
+      const { systemId, fromTime, toTime, state, generalSearch } = req.query;
 
       const totalReceivedEventCountQuery = this.knexPool('received_event')
         .join('event', 'event.id', 'received_event.event_id')
-        .count();
-
+        .countDistinct('received_event.id');
+        
       if (systemId) {
         totalReceivedEventCountQuery.where(
           'event.system_id',
@@ -1428,7 +1429,7 @@ class EventControllers {
         totalReceivedEventCountQuery.where(
           'received_at',
           '<=',
-          toTime as string,
+          toTimeDate,
         );
       }
 
@@ -1438,10 +1439,41 @@ class EventControllers {
         totalReceivedEventCountQuery.where(
           'received_at',
           '>',
-          fromTime as string,
+          fromTimeDate,
         );
       }
+      if(state) {
+        totalReceivedEventCountQuery.join(
+          'contract_exc_detail',
+          'contract_exc_detail.received_event_id',
+          'received_event.id',
+        ).where('contract_exc_detail.state', "=", state as string)
+      }
 
+      if(generalSearch) {
+        totalReceivedEventCountQuery
+          .join('system', 'system.id', 'event.system_id')
+          .where( (qb) => {
+            if (!systemId) {
+              qb.where(
+                'system.name',
+                "like",
+                `%${generalSearch}%` as string,
+              )
+            }
+            qb.orWhere('event.name',
+              "like",
+              `%${generalSearch}%` as string,
+            ).orWhere(
+              'received_event.id',
+                generalSearch as string,
+            ).orWhere(
+              'event.identifier',
+              "like",
+              `%${generalSearch}%` as string,
+            );
+          });
+      }
       const receivedEventsQuery = this.knexPool('received_event')
         .offset(offset)
         .limit(itemsPerPage)
@@ -1466,9 +1498,8 @@ class EventControllers {
         const parsedSystemEvents = systemEvents.map((se) => se.id);
         receivedEventsQuery.where('event_id', 'in', parsedSystemEvents);
       }
-
       const totalReceivedEventCount = (await totalReceivedEventCountQuery)[0][
-        'count(*)'
+        'count(distinct `received_event`.`id`)'
       ];
 
       const totalPages = Math.ceil(
@@ -1500,15 +1531,52 @@ class EventControllers {
         .join('system', 'system.id', 'event.system_id')
         .orderBy('received_event.id', order);
 
+        if(generalSearch) {
+          receivedEventsFullQuery
+          .where(qb => {
+            if(!systemId) {
+              qb.where(
+                'system.name',
+                "like",
+                `%${generalSearch}%` as string,
+              );
+            }
+            qb.where(
+                'received_event.id',
+                generalSearch as string,
+              ).orWhere(
+                'system.name',
+                "like",
+                `%${generalSearch}%` as string,
+              )
+              .orWhere(
+                'event.name',
+                "like",
+                `%${generalSearch}%` as string,
+              ).orWhere(
+                'event.identifier',
+                "like",
+                `%${generalSearch}%` as string,
+              );
+          })
+        }
+
       const receivedEvents = await receivedEventsFullQuery;
-
       const joinedSearch = this.joinSearch(receivedEvents, 'id', 'state');
-
+      let filteredData = [];
+      if (state) {
+        const eventLogs = joinedSearch.filter( (item) => {
+          return item.state.find((eachState: string) => eachState === state)
+        })
+        filteredData = eventLogs;
+      } else {
+        filteredData = joinedSearch;
+      }
       return res.status(200).json({
         code: 200000,
         message: 'success',
         content: {
-          items: joinedSearch,
+          items: filteredData,
           pageIndex,
           itemsPerPage,
           totalItems: totalReceivedEventCount,
@@ -1516,6 +1584,7 @@ class EventControllers {
         },
       });
     } catch (error) {
+      console.log(error)
       return this.returnError(
         error.message,
         error.message,
