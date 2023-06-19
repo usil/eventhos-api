@@ -52,6 +52,7 @@ Following the [third commandment](https://12factor.net/config) we use environmen
 | LOG_LEVEL                            | Set the logger level                           | debug         |
 | RAW_SENSIBLE_PARAMS                          | Names of the keys that have sensitive values ​​sent when executing an event. <br>The values ​​of the keys sent here will be hidden. <br> Example: event-key, access-key, newkey                           |          |
 | HTTP_BODY_SIZE_LIMIT     |   Supported size of the json that interacts with the app   | 50mb         |
+| SMTP_SUBJECT_MODE     |    The value that you declare in this variable will be seen in the subject on email error report, example: dev,prod,et.        |
 
 
 To use these variables in your developer workspace, check [this](https://github.com/usil/eventhos-api/wiki/for-developers)
@@ -105,6 +106,19 @@ Once the application is running you can either use the eventhos platform (recomm
 | -----| --- | -------| ----------- |
 | advanced-settings | https://github.com/nodeboot/advanced-settings | main  | - |
 | nodeboot-oauth2-starter | https://github.com/usil/nodeboot-oauth2-starter#fix-validator-middleware | fix-validator-middleware | - |
+
+## Configurations
+
+### - ***obfuscate data in email error report***
+
+If you want to obsfucate data in email error report you need to declare the ***RAW_SENSIBLE_PARAMS*** variable and put the values ​​you need to obfuscate.
+
+### - ***Add custom subject on email error report***
+
+Declare the ***SMTP_SUBJECT_MODE*** variable and put the value.
+
+![image](https://github.com/usil/eventhos-web/assets/66818290/b215b8f5-43a1-4f68-95a1-89f456f024e8)
+
 
 
 ## License

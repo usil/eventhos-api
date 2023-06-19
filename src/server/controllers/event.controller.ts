@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { Knex } from 'knex';
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { async, concat, defer, merge, Observable, take } from 'rxjs';
+import { concat, defer, merge, Observable, take } from 'rxjs';
 import {
   Action,
   ActionSecurity,
@@ -22,10 +22,9 @@ import { Client } from 'stompit';
 import { ConfigGlobalDto } from '../../../config/config.dto';
 import ErrorForNext from './helpers/ErrorForNext';
 import { nanoid } from 'nanoid';
-import { MailService } from '../util/Mailer';
 import fs from 'fs';
 import { promisify } from 'util';
-import { objectObfuscate, stringObfuscate } from '../../helpers/general';
+import MailService from '../util/Mailer';
 
 const readFile = promisify(fs.readFile);
 
@@ -43,7 +42,7 @@ interface ContractsExecutionBody {
     };
   };
 }
-interface EventContract {
+export interface EventContract {
   action: Action;
   event: Event;
   contract: Contract;
@@ -51,13 +50,14 @@ interface EventContract {
   system_producer?: System;
   system_consumer?: System;
 }
+
 class EventControllers {
   configuration = getConfig();
   knexPool: Knex;
   scryptPromise = util.promisify(crypto.scrypt);
   encryptionKey: Buffer;
   queueClient: Client;
-  mailService = new (MailService as any)();
+  mailService = new MailService();
 
   constructor(knexPool: Knex, encryptionKey: Buffer, queueClient?: Client) {
     this.knexPool = knexPool;
@@ -126,12 +126,24 @@ class EventControllers {
     client.ack(message);
   }
   sendMailToEventhosManagersOnError = async (message: string) => {
-    await this.mailService.sendMail({
-      to: process.env.SMTP_DEFAULT_RECIPIENT,
+    const smtpParams = {
+      to: this.configuration.smtp.defaultRecipients,
       text: message,
       html: `<b>${message}</b>`,
-      subject: 'Eventhos error notification ' + new Date(),
-    });
+      subject: this.mailService.getSubject(),
+      smtpHost: this.configuration.smtp.host,
+      smtpPort: this.configuration.smtp.port,
+      smtpUser: this.configuration.smtp.user,
+      smtpPassword: this.configuration.smtp.password,
+      smtpTlsCiphers: this.configuration.smtp.tlsCiphers,
+      smtpSecure: this.configuration.smtp.enableSSL,
+      smtpAlias: this.configuration.smtp.alias
+    }
+    
+    if (this.configuration.smtp.host && !this.configuration.smtp.host.includes("${")) {
+      await this.mailService.sendMail(smtpParams);
+    }
+
   };
   /**
    *
@@ -164,10 +176,10 @@ class EventControllers {
         .first()
         .where('event.identifier', eventIdentifier)
         .andWhere('event.deleted', false)) as {
-        client_id: number;
-        identifier: string;
-        id: number;
-      };
+          client_id: number;
+          identifier: string;
+          id: number;
+        };
 
       if (!event) {
         this.sendMailToEventhosManagersOnError(
@@ -423,13 +435,13 @@ class EventControllers {
         .where('contract.event_id', res.locals.eventId)
         .where('contract.active', true)
         .andWhere('contract.deleted', false)) as {
-        action: Action;
-        event: Event;
-        contract: Contract;
-        action_security: ActionSecurity;
-        system_producer: any;
-        system_consumer: any;
-      }[];
+          action: Action;
+          event: Event;
+          contract: Contract;
+          action_security: ActionSecurity;
+          system_producer: any;
+          system_consumer: any;
+        }[];
       if (eventContracts.length === 0) {
         const basicRequest = {
           headers: req.headers,
@@ -912,13 +924,13 @@ class EventControllers {
   ) => {
     const mergedContractExecutions: Observable<
       | {
-          message: string;
-          error?: undefined;
-        }
+        message: string;
+        error?: undefined;
+      }
       | {
-          message: string;
-          error: any;
-        }
+        message: string;
+        error: any;
+      }
     >[] = [];
 
     for (const ocKey in orderedContracts) {
@@ -940,13 +952,13 @@ class EventControllers {
   handlePostContractExecution = (
     res:
       | {
-          message: string;
-          error?: undefined;
-        }
+        message: string;
+        error?: undefined;
+      }
       | {
-          message: string;
-          error: any;
-        },
+        message: string;
+        error: any;
+      },
     logger: Logger,
   ) => {
     if (res.error) {
@@ -1053,6 +1065,7 @@ class EventControllers {
         });
         jsonAxiosBaseConfig.url = parsedUrl;
       }
+
       const httpConfiguration: AxiosRequestConfig = {
         url: jsonAxiosBaseConfig.url,
         method: jsonAxiosBaseConfig.method,
@@ -1068,28 +1081,31 @@ class EventControllers {
         ...httpConfiguration,
         timeout: getConfig().subscription.timeout,
       });
-      await this.handleContractExecution(result, eventContract, receivedEvent);
 
+      await this.handleContractExecution(result, eventContract, receivedEvent);
       return {
         message: `Contract with id ${eventContract.contract.id} executed successfully`,
       };
     } catch (error) {
+
       if (error.isAxiosError) {
-        this.handleContractExecutionError(
+        await this.handleContractExecutionError(
           error,
           eventContract,
           receivedEvent,
-        ).then(() => getConfig().log().info('Error saved'));
+        ).then((data) => {
+          getConfig().log().info('Error saved');          
+        });
         let receptorsOnError = '';
         if (
           eventContract.contract.mail_recipients_on_error.length === 0 ||
           eventContract.contract.mail_recipients_on_error.length === null
         ) {
-          receptorsOnError = process.env.SMTP_DEFAULT_RECIPIENT;
+          receptorsOnError = this.configuration.smtp.defaultRecipients;
         } else {
           receptorsOnError = eventContract.contract.mail_recipients_on_error;
-        }
-        let html = await readFile(
+        };
+        let mailTemplate = await readFile(
           'src/mail/templates/mailRecipientsOnError.html',
           'utf8',
         );
@@ -1098,61 +1114,49 @@ class EventControllers {
         const jsonAxiosBaseConfig = JSON.parse(
           await this.decryptString(eventContract.action.http_configuration),
         ) as AxiosRequestConfig;
-        html = html.replace('@contract', eventContract.contract.identifier);
-        html = html.replace(
-          '@when',
-          eventContract.event.identifier +
-            ' - ' +
-            eventContract.event.description,
-        );
-        html = html.replace(
-          '@inWhen',
-          eventContract.system_producer?.identifier +
-            ' - ' +
-            eventContract.system_producer?.description,
-        );
-        html = html.replace(
-          '@then',
-          eventContract.action.identifier +
-            ' - ' +
-            eventContract.action.description,
-        );
-        html = html.replace(
-          '@inThen',
-          eventContract.system_consumer?.identifier +
-            ' - ' +
-            eventContract.system_consumer?.description,
-        );
-        //event
-        html = html.replace('@timestampEvent', now);
-        let urlWithSensitiveValues = stringObfuscate(process.env.RAW_SENSIBLE_PARAMS, parsedReq.url);
-        html = html.replace('@urlEvent', urlWithSensitiveValues);
-
-        html = html.replace('@bodyEvent', JSON.stringify(parsedBody));
-        let headersWithSensitiveValues = objectObfuscate(process.env.RAW_SENSIBLE_PARAMS, parsedReq.headers)
-        html = html.replace('@headersEvent', JSON.stringify(headersWithSensitiveValues));
-        //subscriber
-        html = html.replace('@timestampSubscriber', now);
-        html = html.replace('@urlSubscriber', jsonAxiosBaseConfig.url);
-        html = html.replace(
-          '@httpStatusSubscriber',
-          error.response?.status ?? 500,
-        );
-        html = html.replace(
-          '@bodySubscriber',
-          JSON.stringify(error.response?.data ?? {}),
-        );
-        html = html.replace(
-          '@headersSubscriber',
-          JSON.stringify(error.response?.headers ?? {}),
-        );
-
-        await this.mailService.sendMail({
-          to: receptorsOnError,
-          text: 'There are errors in subscribe system',
-          subject: 'Eventhos error notification ' + new Date(),
-          html: html,
-        });
+        const rawSensibleParams = this.configuration.smtp.rawSensibleParams;
+        const receivedEventId = receivedEvent[0].toString();
+        const paramsHtml = {
+          eventContractContractIdentifier: eventContract.contract.identifier,
+          eventContractEventIdentifier: eventContract.event.identifier,
+          eventContractEventDescription: eventContract.event.description,
+          eventContractSystemProducerName: eventContract.system_producer.name,
+          eventContractSystemProducerDescription: eventContract.system_producer.description,
+          eventContractActionIdentifier: eventContract.action.identifier,
+          eventContractActionDescription: eventContract.action.description,
+          eventContractSystemConsumerName: eventContract.system_consumer.name,
+          eventContractSystemConsumerDescription: eventContract.system_consumer.description,
+          receivedEventId: receivedEventId,
+          parsedBody: parsedBody,
+          parsedReqUrl: parsedReq.url,
+          parsedReqHeaders: parsedReq.headers,
+          errorResponseRequestResponseUrl: error?.response?.request?.res?.responseUrl ?? jsonAxiosBaseConfig.url,
+          errorResponseStatus: error.response?.status ?? 500,
+          errorResponseData: error.response?.data,
+          errorResponseHeaders: error.response?.headers
+        }
+        const html = 
+          this.mailService.replaceHtmlToSendByMail(
+            mailTemplate, 
+            now, 
+            rawSensibleParams,
+            paramsHtml
+          );
+        if (this.configuration.smtp.host && !this.configuration.smtp.host.includes("${")) {
+          await this.mailService.sendMail({
+            to: receptorsOnError,
+            text: 'There are errors in subscribe system',
+            subject: this.mailService.getSubject(),
+            html: html,
+            smtpHost: this.configuration.smtp.host,
+            smtpPort: this.configuration.smtp.port,
+            smtpUser: this.configuration.smtp.user,
+            smtpPassword: this.configuration.smtp.password,
+            smtpTlsCiphers: this.configuration.smtp.tlsCiphers,
+            smtpSecure: this.configuration.smtp.enableSSL,
+            smtpAlias: this.configuration.smtp.alias
+          });
+        }
       }
       return {
         message: `Error while executing contract with id ${eventContract.contract.id}`,
@@ -1208,6 +1212,7 @@ class EventControllers {
           '|.|' +
           encryptResultResponse.encryptedData,
       });
+      return excDetail[0];
     } catch (lastError) {
       logger.error(lastError);
     }
@@ -1400,16 +1405,17 @@ class EventControllers {
     res: Response,
     next: NextFunction,
   ) => {
+    
     try {
       const { itemsPerPage, offset, pageIndex, order } =
         controllerHelpers.getPaginationData(req);
 
-      const { systemId, fromTime, toTime } = req.query;
+      const { systemId, fromTime, toTime, state, generalSearch } = req.query;
 
       const totalReceivedEventCountQuery = this.knexPool('received_event')
         .join('event', 'event.id', 'received_event.event_id')
-        .count();
-
+        .countDistinct('received_event.id');
+        
       if (systemId) {
         totalReceivedEventCountQuery.where(
           'event.system_id',
@@ -1423,7 +1429,7 @@ class EventControllers {
         totalReceivedEventCountQuery.where(
           'received_at',
           '<=',
-          toTime as string,
+          toTimeDate,
         );
       }
 
@@ -1433,10 +1439,41 @@ class EventControllers {
         totalReceivedEventCountQuery.where(
           'received_at',
           '>',
-          fromTime as string,
+          fromTimeDate,
         );
       }
+      if(state) {
+        totalReceivedEventCountQuery.join(
+          'contract_exc_detail',
+          'contract_exc_detail.received_event_id',
+          'received_event.id',
+        ).where('contract_exc_detail.state', "=", state as string)
+      }
 
+      if(generalSearch) {
+        totalReceivedEventCountQuery
+          .join('system', 'system.id', 'event.system_id')
+          .where( (qb) => {
+            if (!systemId) {
+              qb.where(
+                'system.name',
+                "like",
+                `%${generalSearch}%` as string,
+              )
+            }
+            qb.orWhere('event.name',
+              "like",
+              `%${generalSearch}%` as string,
+            ).orWhere(
+              'received_event.id',
+                generalSearch as string,
+            ).orWhere(
+              'event.identifier',
+              "like",
+              `%${generalSearch}%` as string,
+            );
+          });
+      }
       const receivedEventsQuery = this.knexPool('received_event')
         .offset(offset)
         .limit(itemsPerPage)
@@ -1461,9 +1498,8 @@ class EventControllers {
         const parsedSystemEvents = systemEvents.map((se) => se.id);
         receivedEventsQuery.where('event_id', 'in', parsedSystemEvents);
       }
-
       const totalReceivedEventCount = (await totalReceivedEventCountQuery)[0][
-        'count(*)'
+        'count(distinct `received_event`.`id`)'
       ];
 
       const totalPages = Math.ceil(
@@ -1495,15 +1531,52 @@ class EventControllers {
         .join('system', 'system.id', 'event.system_id')
         .orderBy('received_event.id', order);
 
+        if(generalSearch) {
+          receivedEventsFullQuery
+          .where(qb => {
+            if(!systemId) {
+              qb.where(
+                'system.name',
+                "like",
+                `%${generalSearch}%` as string,
+              );
+            }
+            qb.where(
+                'received_event.id',
+                generalSearch as string,
+              ).orWhere(
+                'system.name',
+                "like",
+                `%${generalSearch}%` as string,
+              )
+              .orWhere(
+                'event.name',
+                "like",
+                `%${generalSearch}%` as string,
+              ).orWhere(
+                'event.identifier',
+                "like",
+                `%${generalSearch}%` as string,
+              );
+          })
+        }
+
       const receivedEvents = await receivedEventsFullQuery;
-
       const joinedSearch = this.joinSearch(receivedEvents, 'id', 'state');
-
+      let filteredData = [];
+      if (state) {
+        const eventLogs = joinedSearch.filter( (item) => {
+          return item.state.find((eachState: string) => eachState === state)
+        })
+        filteredData = eventLogs;
+      } else {
+        filteredData = joinedSearch;
+      }
       return res.status(200).json({
         code: 200000,
         message: 'success',
         content: {
-          items: joinedSearch,
+          items: filteredData,
           pageIndex,
           itemsPerPage,
           totalItems: totalReceivedEventCount,
@@ -1511,6 +1584,7 @@ class EventControllers {
         },
       });
     } catch (error) {
+      console.log(error)
       return this.returnError(
         error.message,
         error.message,
@@ -1614,7 +1688,7 @@ class EventControllers {
       if (
         index === 0 ||
         baseSearch[index][differentiator] !==
-          baseSearch[index - 1][differentiator]
+        baseSearch[index - 1][differentiator]
       ) {
         for (const similarField of similarFields) {
           const temporalFieldValue = baseSearch[index][similarField];
