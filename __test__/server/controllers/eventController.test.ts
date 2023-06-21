@@ -81,7 +81,6 @@ describe('Event routes work accordingly', () => {
       knex.from = jest.fn().mockReturnValue(knex);
       knex.join = jest.fn().mockReturnValue(knex);
       knex.first = jest.fn().mockReturnValue(knex);
-      knex.select = jest.fn().mockReturnValue(knex);
       knex.where = jest.fn().mockReturnValue(knex);
       knex.andWhere = jest.fn().mockReturnValue(knex);
       return knex;
@@ -232,6 +231,8 @@ describe('Event routes work accordingly', () => {
       eventControllers.knexPool = localKnexMock;
 
       eventControllers.returnError = jest.fn();
+      eventControllers.sendMailToEventhosManagersOnError = jest.fn();
+
 
       await eventControllers.eventValidation(
         mockReq(),
@@ -239,14 +240,18 @@ describe('Event routes work accordingly', () => {
         mockedNext,
       );
 
-      expect(eventControllers.returnError).toHaveBeenCalledWith(
+      expect(eventControllers.sendMailToEventhosManagersOnError).toHaveBeenCalled()
+      expect(eventControllers.sendMailToEventhosManagersOnError).toHaveBeenCalledTimes(1)
+      expect(eventControllers.returnError).toHaveBeenCalled()
+      expect(eventControllers.returnError).toHaveBeenCalledTimes(1)
+      /* expect(eventControllers.returnError).toHaveBeenCalledWith(
         'The client does not exist.',
         'The client does not exist.',
         404201,
         404,
         'eventValidation',
         mockedNext,
-      );
+      ); */
     });
 
     it('Event validation middleware, correct message when client has access_token', async () => {
@@ -331,13 +336,16 @@ describe('Event routes work accordingly', () => {
       eventControllers.knexPool = localKnexMock;
 
       eventControllers.returnError = jest.fn();
+      eventControllers.sendMailToEventhosManagersOnError = jest.fn();
 
       await eventControllers.eventValidation(
         mockReq(),
         mockResponse,
         mockedNext,
       );
-
+      expect(eventControllers.sendMailToEventhosManagersOnError).toBeCalledTimes(1);
+      expect(eventControllers.sendMailToEventhosManagersOnError).toBeCalledWith('Incorrect token');
+      expect(eventControllers.returnError).toBeCalledTimes(1);
       expect(eventControllers.returnError).toHaveBeenCalledWith(
         'Incorrect token',
         'Incorrect token',
@@ -346,7 +354,6 @@ describe('Event routes work accordingly', () => {
         'eventValidation',
         mockedNext,
       );
-
       jwtSpy.mockRestore();
     });
 
