@@ -109,6 +109,14 @@ Once the application is running you can either use the eventhos platform (recomm
 
 ## Configurations
 
+### - ***Actions - use raw function body for complex integrations***
+Remember that to access the parameters of the body, you must access it from the object **"eventContext.httpRequest.body"**
+
+Example
+
+![image](https://github.com/usil/eventhos-api/assets/66818290/deedd568-c2c7-4e3a-89f3-f8d79cd81ac0)
+
+
 ### - ***obfuscate data in email error report***
 
 If you want to obsfucate data in email error report you need to declare the ***RAW_SENSIBLE_PARAMS*** variable and put the values ​​you need to obfuscate.
