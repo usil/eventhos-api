@@ -8,6 +8,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import util from 'util';
+import MailService from '../../../src/server/util/Mailer';
 
 const scryptPromise = util.promisify(crypto.scrypt);
 
@@ -59,6 +60,14 @@ jest.mock('knex', () => {
   };
   return jest.fn(() => mKnex);
 });
+/* jest.mock('../../../src/server/util/Mailer', () => {
+  return  {
+    MailService: jest.fn().mockImplementation(() => {
+      return {
+        sendMail: () => {}
+      }
+  })}
+}) */
 describe('Event routes work accordingly', () => {
   let encryptKey: Buffer;
 
@@ -2570,4 +2579,70 @@ describe('Event routes work accordingly', () => {
       test: 1,
     });
   });
+  // |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+  describe('Event - Parsed URL params', () => {
+    test('should return the same url when send the url without correct syntax ${. ...}', () => {
+      const eventController = new EventControllers({} as any, encryptKey);
+      const req = {
+        headers: {
+          test: '1',
+        },
+        query: {
+          test: '1',
+        },
+        body: {
+          test: 1,
+        },
+      };
+      const urlTest = "http://localhost:4200/dashboard/action";
+      const result = eventController.parsedUrlParams(urlTest, req);
+
+      expect(result).toEqual(urlTest);
+
+    });
+    test(
+      'should return the modified url with undefined when send the url with correct syntax ${. ...}  without param'
+      , () => {
+      const eventController = new EventControllers({} as any, encryptKey);
+      const req = {
+        headers: {
+          test: '1',
+        },
+        query: {
+          test: '1',
+        },
+        body: {
+          test: 1,
+        },
+      };
+      const urlTest = "http://localhost:4200/dashboard/action/${.id}";
+      const result = eventController.parsedUrlParams(urlTest, req);
+      expect(result).toEqual("http://localhost:4200/dashboard/action/undefined");
+    });
+
+    test(
+      'should return the modified url  when send the url with correct syntax ${. ...}  with param'
+      , () => {
+      const eventController = new EventControllers({} as any, encryptKey);
+      const req = {
+        headers: {
+          test: '1',
+        },
+        query: {
+          test: '1',
+        },
+        param: {
+          tes:"jx"
+        },
+        body: {
+          test: 1,
+          id:500,
+        },
+      };
+      const urlTest = "http://localhost:4200/dashboard/action/${.body.id}";
+      const result = eventController.parsedUrlParams(urlTest, req);
+      expect(result).toEqual("http://localhost:4200/dashboard/action/500");
+    });
+  });
 });
+

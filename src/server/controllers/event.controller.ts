@@ -1183,7 +1183,7 @@ class EventControllers {
     query: Record<string, string | ParsedQs | string[] | ParsedQs[]>;
     body: Record<string, any>;
   }): string => {
-    if (jsonAxiosBaseConfigUrl.search('${.')) {
+    if (jsonAxiosBaseConfigUrl.includes('${.')) {
       let parsedUrl = jsonAxiosBaseConfigUrl;
       const parseUrlArr = parsedUrl.split('/$');
       parseUrlArr.shift();
