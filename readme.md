@@ -27,7 +27,7 @@ In this repository you will find the code of the artifact called **eventhos-api*
 Following the [third commandment](https://12factor.net/config) we use environment variables to handle the configurations
 
 | Variable                             | Description                                    | Default Value |
-| ------------------------------------ | ---------------------------------------------- | ------------- |
+| :----------------------------------- | :--------------------------------------------- | :------------ |
 | DATA_BASE_NAME                       | The eventhos platform database name            | eventhos      |
 | DATA_BASE_HOST                       | The eventhos platform database host            | localhost     |
 | DATA_BASE_PORT                       | The eventhos platform database port            | 3306          |
@@ -52,7 +52,7 @@ Following the [third commandment](https://12factor.net/config) we use environmen
 | LOG_LEVEL                            | Set the logger level                           | debug         |
 | RAW_SENSIBLE_PARAMS                          | Names of the keys that have sensitive values ​​sent when executing an event. <br>The values ​​of the keys sent here will be hidden. <br> Example: event-key, access-key, newkey                           |          |
 | HTTP_BODY_SIZE_LIMIT     |   Supported size of the json that interacts with the app   | 50mb         |
-| SMTP_SUBJECT_MODE     |    The value that you declare in this variable will be seen in the subject on email error report, example: dev,prod,et.        |
+| ENVIRONMENT_ALIAS     |    The value that you declare in this variable will be seen in the subject on email error report, example: dev,prod,et.        |
 
 
 To use these variables in your developer workspace, check [this](https://github.com/usil/eventhos-api/wiki/for-developers)
@@ -108,25 +108,7 @@ Once the application is running you can either use the eventhos platform (recomm
 | nodeboot-oauth2-starter | https://github.com/usil/nodeboot-oauth2-starter#fix-validator-middleware | fix-validator-middleware | - |
 
 ## Configurations
-
-### - ***Actions - use raw function body for complex integrations***
-Remember that to access the parameters of the body, you must access it from the object **"eventContext.httpRequest.body"**
-
-Example
-
-![image](https://github.com/usil/eventhos-api/assets/66818290/deedd568-c2c7-4e3a-89f3-f8d79cd81ac0)
-
-
-### - ***obfuscate data in email error report***
-
-If you want to obsfucate data in email error report you need to declare the ***RAW_SENSIBLE_PARAMS*** variable and put the values ​​you need to obfuscate.
-
-### - ***Add custom subject on email error report***
-
-Declare the ***SMTP_SUBJECT_MODE*** variable and put the value.
-
-![image](https://github.com/usil/eventhos-web/assets/66818290/b215b8f5-43a1-4f68-95a1-89f456f024e8)
-
+[Advanced configurations](https://github.com/usil/eventhos-api/wiki/for-developers#advanced-configurations)
 
 
 ## License

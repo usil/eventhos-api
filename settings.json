@@ -40,7 +40,7 @@
     "heartBeat": "${QUEUE_HEART_BEAT}"
   },
   "smtp": {
-    "subjectMode": "${SMTP_SUBJECT_MODE}",
+    "subjectMode": "${ENVIRONMENT_ALIAS}",
     "rawSensibleParams": "${RAW_SENSIBLE_PARAMS}",
     "host": "${SMTP_HOST}",
     "port": "${SMTP_PORT}",

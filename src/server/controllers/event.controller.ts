@@ -1490,7 +1490,8 @@ class EventControllers {
 
       if (generalSearch) {
         totalReceivedEventCountQuery
-          .join('system', 'system.id', 'event.system_id')
+        .where('received_event.id', generalSearch as string)
+          /* .join('system', 'system.id', 'event.system_id')
           .where((qb) => {
             if (!systemId) {
               qb.where(
@@ -1504,17 +1505,18 @@ class EventControllers {
               `%${generalSearch}%` as string,
             ).orWhere(
               'received_event.id',
-              generalSearch as string,
+              'like',
+              `%${generalSearch}%` as string,
             ).orWhere(
               'event.identifier',
               "like",
               `%${generalSearch}%` as string,
             );
-          });
+          }); */
       }
       const receivedEventsQuery = this.knexPool('received_event')
-        .offset(offset)
         .limit(itemsPerPage)
+        .offset(offset)
         .orderBy('received_event.id', order);
 
       if (toTime) {
@@ -1535,6 +1537,9 @@ class EventControllers {
           .where('system_id', systemId as string);
         const parsedSystemEvents = systemEvents.map((se) => se.id);
         receivedEventsQuery.where('event_id', 'in', parsedSystemEvents);
+      }
+      if (generalSearch) {
+        receivedEventsQuery.where('received_event.id', generalSearch as string);
       }
       const totalReceivedEventCount = (await totalReceivedEventCountQuery)[0][
         'count(distinct `received_event`.`id`)'
@@ -1569,52 +1574,54 @@ class EventControllers {
         .join('system', 'system.id', 'event.system_id')
         .orderBy('received_event.id', order);
 
-      if (generalSearch) {
-        receivedEventsFullQuery
-          .where(qb => {
-            if (!systemId) {
-              qb.where(
-                'system.name',
-                "like",
-                `%${generalSearch}%` as string,
-              );
-            }
-            qb.where(
-              'received_event.id',
-              generalSearch as string,
-            ).orWhere(
+      /*if (generalSearch) {
+        receivedEventsQuery.where(
+          'received_event.id', "=",
+          `${generalSearch}` as string,
+        )
+          .where((qb) => {
+            qb.orWhere(
               'system.name',
               "like",
               `%${generalSearch}%` as string,
+            ).orWhere(
+              'event.name',
+              "like",
+              `%${generalSearch}%` as string,
+            ).orWhere(
+              'received_event.id',
+              "like",
+              `%${generalSearch}%` as string,
             )
-              .orWhere(
-                'event.name',
-                "like",
-                `%${generalSearch}%` as string,
-              ).orWhere(
-                'event.identifier',
-                "like",
-                `%${generalSearch}%` as string,
-              );
-          })
-      }
+            .orWhere(
+              'event.identifier',
+              "like",
+              `%${generalSearch}%` as string,
+            );
+          }); */
+
+          /* this.configuration.log().error(generalSearch);
+          this.configuration.log().error(receivedEventsFullQuery.toQuery());
+          this.configuration.log().error(await receivedEventsFullQuery);
+
+      } */
 
       const receivedEvents = await receivedEventsFullQuery;
       const joinedSearch = this.joinSearch(receivedEvents, 'id', 'state');
       let filteredData = [];
-      if (state) {
+      /* if (state) {
         const eventLogs = joinedSearch.filter((item) => {
           return item.state.find((eachState: string) => eachState === state)
         })
         filteredData = eventLogs;
       } else {
         filteredData = joinedSearch;
-      }
+      } */
       return res.status(200).json({
         code: 200000,
         message: 'success',
         content: {
-          items: filteredData,
+          items: joinedSearch,
           pageIndex,
           itemsPerPage,
           totalItems: totalReceivedEventCount,
