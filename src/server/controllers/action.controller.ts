@@ -35,6 +35,7 @@ class ActionControllers {
         securityUrl,
         clientId,
         clientSecret,
+        rawFunctionBody
       } = req.body;
 
       const action = await this.knexPool
@@ -63,7 +64,7 @@ class ActionControllers {
         parsedHeaders[header.key] = header.value;
       }
 
-      if (!rawBody) {
+      if (!rawBody && !rawFunctionBody) {
         for (const b of body as {
           key: string;
           value: string | number;
@@ -87,6 +88,7 @@ class ActionControllers {
         headers: parsedHeaders,
         data: parsedBody,
         params: parsedQueryUrlParams,
+        rawFunctionBody : rawFunctionBody
       };
 
       const stringedHttpConfiguration = JSON.stringify(httpConfiguration);
@@ -405,6 +407,7 @@ class ActionControllers {
         queryUrlParams,
         clientSecret,
         clientId,
+        rawFunctionBody
       } = req.body;
 
       const parsedHeaders: Record<string, any> = {};
@@ -430,6 +433,7 @@ class ActionControllers {
         headers: parsedHeaders,
         data: rawBody,
         params: parsedQueryUrlParams,
+        rawFunctionBody : rawFunctionBody
       };
       const stringedHttpConfiguration = JSON.stringify(httpConfiguration);
 

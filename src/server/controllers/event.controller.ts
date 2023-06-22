@@ -27,6 +27,8 @@ import { promisify } from 'util';
 import MailService from '../util/Mailer';
 
 const readFile = promisify(fs.readFile);
+const JavaScriptHelpers = require('../../helpers/javaScriptHelpers');
+
 
 interface ContractsExecutionBody {
   orderedContracts: Record<string, EventContract[]>;
@@ -139,9 +141,9 @@ class EventControllers {
       smtpSecure: this.configuration.smtp.enableSSL,
       smtpAlias: this.configuration.smtp.alias
     }
-    
+
     if (this.configuration.smtp.host && !this.configuration.smtp.host.includes("${")) {
-      await this.mailService.sendMail(smtpParams);
+      return await this.mailService.sendMail(smtpParams);
     }
 
   };
@@ -156,7 +158,7 @@ class EventControllers {
       const eventIdentifier = req.query['event-identifier'] as string;
 
       if (!systemKey || !eventIdentifier) {
-        this.sendMailToEventhosManagersOnError(
+        await this.sendMailToEventhosManagersOnError(
           'Either the access key or the identifier for the event was not send.',
         );
         return this.returnError(
@@ -182,7 +184,7 @@ class EventControllers {
         };
 
       if (!event) {
-        this.sendMailToEventhosManagersOnError(
+        await this.sendMailToEventhosManagersOnError(
           `The event ${eventIdentifier} does not exist.`,
         );
         return this.returnError(
@@ -202,21 +204,22 @@ class EventControllers {
           .where('id', event.client_id)
           .andWhere('deleted', false)
       )[0];
+      
 
       if (!client) {
-        this.sendMailToEventhosManagersOnError(`The client does not exist.`);
+        await this.sendMailToEventhosManagersOnError(`The client does not exist.`);
         return this.returnError(
           `The client does not exist.`,
           `The client does not exist.`,
           404201,
           404,
           'eventValidation',
-          next,
+          next,client
         );
       }
 
       if (client.revoked) {
-        this.sendMailToEventhosManagersOnError(
+        await this.sendMailToEventhosManagersOnError(
           `The client access has been revoked.`,
         );
         return this.returnError(
@@ -238,7 +241,7 @@ class EventControllers {
           res.locals.eventId = event.id;
           return next();
         }
-        this.sendMailToEventhosManagersOnError(`Incorrect token`);
+        await this.sendMailToEventhosManagersOnError(`Incorrect token`);
         return this.returnError(
           'Incorrect token',
           'Incorrect token',
@@ -252,9 +255,9 @@ class EventControllers {
       jwt.verify(
         systemKey,
         getConfig().oauth2.jwtSecret,
-        (err: any, decode: any) => {
+        async (err: any, decode: any) => {
           if (err) {
-            this.sendMailToEventhosManagersOnError(`Incorrect token`);
+            await this.sendMailToEventhosManagersOnError(`Incorrect token`);
             return this.returnError(
               'Incorrect token',
               'Incorrect token',
@@ -267,8 +270,8 @@ class EventControllers {
           this.handleDecodeData(decode, client, res, next, event);
         },
       );
-    } catch (error) {
-      this.sendMailToEventhosManagersOnError(error.message);
+    } catch (error) {      
+      await this.sendMailToEventhosManagersOnError(error.message);
       return this.returnError(
         error.message,
         error.message,
@@ -321,7 +324,7 @@ class EventControllers {
       const contractDetailId = req.body['contractDetailId'];
       const receivedEventId = req.body['receivedEventId'];
       if (!res.locals.eventId) {
-        this.sendMailToEventhosManagersOnError('Event Id was not send.');
+        await this.sendMailToEventhosManagersOnError('Event Id was not send.');
         return this.returnError(
           'Event Id was not send.',
           'Event Id was not send.',
@@ -332,7 +335,7 @@ class EventControllers {
         );
       }
       if (!receivedEventId) {
-        this.sendMailToEventhosManagersOnError(
+        await this.sendMailToEventhosManagersOnError(
           'Received event Id was not send.',
         );
         return this.returnError(
@@ -345,7 +348,7 @@ class EventControllers {
         );
       }
       if (!contractDetailId) {
-        this.sendMailToEventhosManagersOnError(
+        await this.sendMailToEventhosManagersOnError(
           'Contract detail Id was not send.',
         );
         return this.returnError(
@@ -385,7 +388,7 @@ class EventControllers {
 
       return next();
     } catch (error) {
-      this.sendMailToEventhosManagersOnError(error.message);
+      await this.sendMailToEventhosManagersOnError(error.message);
       return this.returnError(
         error.message,
         error.message,
@@ -404,7 +407,7 @@ class EventControllers {
   ) => {
     try {
       if (!res.locals.eventId) {
-        this.sendMailToEventhosManagersOnError('Event Id was not send');
+        await this.sendMailToEventhosManagersOnError('Event Id was not send');
         return this.returnError(
           'Event Id was not send.',
           'Event Id was not send.',
@@ -471,7 +474,7 @@ class EventControllers {
       res.locals.eventContracts = eventContracts;
       return next();
     } catch (error) {
-      this.sendMailToEventhosManagersOnError(error.message);
+      await this.sendMailToEventhosManagersOnError(error.message);
       return this.returnError(
         error.message,
         error.message,
@@ -661,7 +664,7 @@ class EventControllers {
         !res.locals.eventContract ||
         !res.locals.contractDetailId
       ) {
-        this.sendMailToEventhosManagersOnError(
+        await this.sendMailToEventhosManagersOnError(
           'Event Id or Event Contract List was not send.',
         );
         return this.returnError(
@@ -675,7 +678,7 @@ class EventControllers {
       }
 
       if (isNaN(res.locals.eventId)) {
-        this.sendMailToEventhosManagersOnError('Event Id is not a number.');
+        await this.sendMailToEventhosManagersOnError('Event Id is not a number.');
         return this.returnError(
           'Event Id is not a number.',
           'Event Id is not a number.',
@@ -687,7 +690,7 @@ class EventControllers {
       }
 
       if (!res.locals.eventContract) {
-        this.sendMailToEventhosManagersOnError(
+        await this.sendMailToEventhosManagersOnError(
           'Event Contract is not an array',
         );
         return this.returnError(
@@ -739,7 +742,7 @@ class EventControllers {
         .where('is_aborted', 0);
 
       if (!contractExcDetailExist || !contractExcTryExist) {
-        this.sendMailToEventhosManagersOnError(
+        await this.sendMailToEventhosManagersOnError(
           'Detail of the contract does not exist or has already been processed',
         );
         return this.returnError(
@@ -772,7 +775,7 @@ class EventControllers {
 
       return res.status(200).json({ code: 20000, message: 'success' });
     } catch (error) {
-      this.sendMailToEventhosManagersOnError(error.message);
+      await this.sendMailToEventhosManagersOnError(error.message);
       return this.returnError(
         error.message,
         error.message,
@@ -788,7 +791,7 @@ class EventControllers {
   manageEvent = async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!res.locals.eventId || !res.locals.eventContracts) {
-        this.sendMailToEventhosManagersOnError(
+        await this.sendMailToEventhosManagersOnError(
           'Event Id or Event Contract List was not send.',
         );
         return this.returnError(
@@ -802,7 +805,7 @@ class EventControllers {
       }
 
       if (isNaN(res.locals.eventId)) {
-        this.sendMailToEventhosManagersOnError('Event Id is not a number');
+        await this.sendMailToEventhosManagersOnError('Event Id is not a number');
         return this.returnError(
           'Event Id is not a number.',
           'Event Id is not a number.',
@@ -814,7 +817,7 @@ class EventControllers {
       }
 
       if (!res.locals.eventContracts.length) {
-        this.sendMailToEventhosManagersOnError(
+        await this.sendMailToEventhosManagersOnError(
           'Event Contracts is not an array',
         );
         return this.returnError(
@@ -895,7 +898,7 @@ class EventControllers {
 
       return res.status(200).json({ code: 20000, message: 'success' });
     } catch (error) {
-      this.sendMailToEventhosManagersOnError(error.message);
+      await this.sendMailToEventhosManagersOnError(error.message);
       return this.returnError(
         error.message,
         error.message,
@@ -1000,7 +1003,6 @@ class EventControllers {
     const parsedQueryParams: Record<string, string> = {};
     let parsedBody: Record<string, any> = {};
     try {
-      this.configuration.log().debug(eventContract, receivedEvent, parsedReq);
       if (eventContract.action_security.type === 'oauth2_client') {
         const jsonAxiosBaseAuthConfig = JSON.parse(
           await this.decryptString(
@@ -1025,7 +1027,8 @@ class EventControllers {
 
       const jsonAxiosBaseConfig = JSON.parse(
         await this.decryptString(eventContract.action.http_configuration),
-      ) as AxiosRequestConfig;
+      ) as AxiosRequestConfig & { rawFunctionBody: string };
+
       for (const headerKey in jsonAxiosBaseConfig.headers) {
         const header = jsonAxiosBaseConfig.headers[headerKey];
         const parsedHeader = this.getVariables(header, 0, parsedReq, 'header');
@@ -1037,35 +1040,40 @@ class EventControllers {
         const parsedParam = this.getVariables(param, 0, parsedReq, 'param');
         parsedQueryParams[paramKey] = parsedParam;
       }
-
+      //TODO: diferencia fullParsedBody
       const fullParsedBody = {
         ...this.parseBodyData(jsonAxiosBaseConfig.data, parsedReq),
       };
 
-      if (JSON.stringify(jsonAxiosBaseConfig.data) === '{}') {
+      if (jsonAxiosBaseConfig?.rawFunctionBody) {
+        const javaScriptHelpers = new JavaScriptHelpers();
+        const eventContext = {
+          httpRequest:
+          {
+            body: { ...parsedReq?.body }
+          }
+        }
+        try {
+          parsedBody = {
+            ...await javaScriptHelpers.executeSingleFunction(
+              jsonAxiosBaseConfig?.rawFunctionBody,
+              eventContext
+            )
+          };
+        } catch (error) {
+          parsedBody = {
+            "code": 40001,
+            "message": `Failed while custom function was executed to create the request : ${error?.message}`
+          }
+        }
+      } else if (JSON.stringify(jsonAxiosBaseConfig.data) === '{}') {
         parsedBody = { ...parsedReq.body };
       } else {
         parsedBody = {
           ...fullParsedBody,
         };
       }
-      if (jsonAxiosBaseConfig.url.search('${.')) {
-        let parsedUrl = jsonAxiosBaseConfig.url;
-        const parseUrlArr = parsedUrl.split('/$');
-        parseUrlArr.shift();
-        parseUrlArr.map((key, index) => {
-          key = key.replace(/\/.*/g, '');
-          const parsedUrlParam = this.getVariables(
-            '$' + key,
-            0,
-            parsedReq,
-            'urlParam',
-          );
-          parsedUrl = parsedUrl.replace('$' + key, parsedUrlParam);
-        });
-        jsonAxiosBaseConfig.url = parsedUrl;
-      }
-
+      jsonAxiosBaseConfig.url = this.parsedUrlParams(jsonAxiosBaseConfig.url, parsedReq)
       const httpConfiguration: AxiosRequestConfig = {
         url: jsonAxiosBaseConfig.url,
         method: jsonAxiosBaseConfig.method,
@@ -1087,14 +1095,13 @@ class EventControllers {
         message: `Contract with id ${eventContract.contract.id} executed successfully`,
       };
     } catch (error) {
-
       if (error.isAxiosError) {
         await this.handleContractExecutionError(
           error,
           eventContract,
           receivedEvent,
         ).then((data) => {
-          getConfig().log().info('Error saved');          
+          getConfig().log().info('Error saved');
         });
         let receptorsOnError = '';
         if (
@@ -1135,10 +1142,10 @@ class EventControllers {
           errorResponseData: error.response?.data,
           errorResponseHeaders: error.response?.headers
         }
-        const html = 
+        const html =
           this.mailService.replaceHtmlToSendByMail(
-            mailTemplate, 
-            now, 
+            mailTemplate,
+            now,
             rawSensibleParams,
             paramsHtml
           );
@@ -1164,6 +1171,36 @@ class EventControllers {
       };
     }
   };
+
+  /**
+   * 
+   * @param jsonAxiosBaseConfigUrl url
+   * @param parsedReq request
+   * @description parsed all parameters that have json path syntax
+   */
+  parsedUrlParams = (jsonAxiosBaseConfigUrl: string, parsedReq: {
+    headers: Record<string, string | string[]>;
+    query: Record<string, string | ParsedQs | string[] | ParsedQs[]>;
+    body: Record<string, any>;
+  }): string => {
+    if (jsonAxiosBaseConfigUrl.includes('${.')) {
+      let parsedUrl = jsonAxiosBaseConfigUrl;
+      const parseUrlArr = parsedUrl.split('/$');
+      parseUrlArr.shift();
+      parseUrlArr.map((key, index) => {
+        key = key.replace(/\/.*/g, '');
+        const parsedUrlParam = this.getVariables(
+          '$' + key,
+          0,
+          parsedReq,
+          'urlParam',
+        );
+        parsedUrl = parsedUrl.replace('$' + key, parsedUrlParam);
+      });
+      return parsedUrl;
+    }
+    return jsonAxiosBaseConfigUrl;
+  }
 
   handleContractExecutionError = async (
     error: AxiosError,
@@ -1288,6 +1325,7 @@ class EventControllers {
     return { hexedInitVector, encryptedData };
   }
 
+  // TODO: documentar que hace la función
   parseBodyData(
     originalData: Record<string, any>,
     parsedReq: {
@@ -1405,7 +1443,7 @@ class EventControllers {
     res: Response,
     next: NextFunction,
   ) => {
-    
+
     try {
       const { itemsPerPage, offset, pageIndex, order } =
         controllerHelpers.getPaginationData(req);
@@ -1415,7 +1453,7 @@ class EventControllers {
       const totalReceivedEventCountQuery = this.knexPool('received_event')
         .join('event', 'event.id', 'received_event.event_id')
         .countDistinct('received_event.id');
-        
+
       if (systemId) {
         totalReceivedEventCountQuery.where(
           'event.system_id',
@@ -1442,7 +1480,7 @@ class EventControllers {
           fromTimeDate,
         );
       }
-      if(state) {
+      if (state) {
         totalReceivedEventCountQuery.join(
           'contract_exc_detail',
           'contract_exc_detail.received_event_id',
@@ -1450,10 +1488,10 @@ class EventControllers {
         ).where('contract_exc_detail.state', "=", state as string)
       }
 
-      if(generalSearch) {
+      if (generalSearch) {
         totalReceivedEventCountQuery
           .join('system', 'system.id', 'event.system_id')
-          .where( (qb) => {
+          .where((qb) => {
             if (!systemId) {
               qb.where(
                 'system.name',
@@ -1466,7 +1504,7 @@ class EventControllers {
               `%${generalSearch}%` as string,
             ).orWhere(
               'received_event.id',
-                generalSearch as string,
+              generalSearch as string,
             ).orWhere(
               'event.identifier',
               "like",
@@ -1531,10 +1569,10 @@ class EventControllers {
         .join('system', 'system.id', 'event.system_id')
         .orderBy('received_event.id', order);
 
-        if(generalSearch) {
-          receivedEventsFullQuery
+      if (generalSearch) {
+        receivedEventsFullQuery
           .where(qb => {
-            if(!systemId) {
+            if (!systemId) {
               qb.where(
                 'system.name',
                 "like",
@@ -1542,13 +1580,13 @@ class EventControllers {
               );
             }
             qb.where(
-                'received_event.id',
-                generalSearch as string,
-              ).orWhere(
-                'system.name',
-                "like",
-                `%${generalSearch}%` as string,
-              )
+              'received_event.id',
+              generalSearch as string,
+            ).orWhere(
+              'system.name',
+              "like",
+              `%${generalSearch}%` as string,
+            )
               .orWhere(
                 'event.name',
                 "like",
@@ -1559,13 +1597,13 @@ class EventControllers {
                 `%${generalSearch}%` as string,
               );
           })
-        }
+      }
 
       const receivedEvents = await receivedEventsFullQuery;
       const joinedSearch = this.joinSearch(receivedEvents, 'id', 'state');
       let filteredData = [];
       if (state) {
-        const eventLogs = joinedSearch.filter( (item) => {
+        const eventLogs = joinedSearch.filter((item) => {
           return item.state.find((eachState: string) => eachState === state)
         })
         filteredData = eventLogs;
@@ -1584,7 +1622,6 @@ class EventControllers {
         },
       });
     } catch (error) {
-      console.log(error)
       return this.returnError(
         error.message,
         error.message,
