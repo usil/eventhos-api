@@ -1448,7 +1448,7 @@ class EventControllers {
       const { itemsPerPage, offset, pageIndex, order } =
         controllerHelpers.getPaginationData(req);
 
-      const { systemId, fromTime, toTime, state, idSearch } = req.query;
+      const { systemId, fromTime, toTime, state, idSearch, eventIdentifierSearch } = req.query;
 
       const totalReceivedEventCountQuery = this.knexPool('received_event')
         .join('event', 'event.id', 'received_event.event_id')
@@ -1487,32 +1487,14 @@ class EventControllers {
           'received_event.id',
         ).where('contract_exc_detail.state', "=", state as string)
       }
+      if (eventIdentifierSearch) {
+        totalReceivedEventCountQuery
+          .where('event.identifier', "=", eventIdentifierSearch as string)
+      }
 
       if (idSearch) {
         totalReceivedEventCountQuery
-        .where('received_event.id', idSearch as string)
-          /* .join('system', 'system.id', 'event.system_id')
-          .where((qb) => {
-            if (!systemId) {
-              qb.where(
-                'system.name',
-                "like",
-                `%${generalSearch}%` as string,
-              )
-            }
-            qb.orWhere('event.name',
-              "like",
-              `%${generalSearch}%` as string,
-            ).orWhere(
-              'received_event.id',
-              'like',
-              `%${generalSearch}%` as string,
-            ).orWhere(
-              'event.identifier',
-              "like",
-              `%${generalSearch}%` as string,
-            );
-          }); */
+        .where('received_event.id', idSearch as string);
       }
       const receivedEventsQuery = this.knexPool('received_event')
         .limit(itemsPerPage)
@@ -1573,38 +1555,11 @@ class EventControllers {
         .join('event', 'event.id', 'received_event.event_id')
         .join('system', 'system.id', 'event.system_id')
         .orderBy('received_event.id', order);
-
-      /*if (generalSearch) {
-        receivedEventsQuery.where(
-          'received_event.id', "=",
-          `${generalSearch}` as string,
-        )
-          .where((qb) => {
-            qb.orWhere(
-              'system.name',
-              "like",
-              `%${generalSearch}%` as string,
-            ).orWhere(
-              'event.name',
-              "like",
-              `%${generalSearch}%` as string,
-            ).orWhere(
-              'received_event.id',
-              "like",
-              `%${generalSearch}%` as string,
-            )
-            .orWhere(
-              'event.identifier',
-              "like",
-              `%${generalSearch}%` as string,
-            );
-          }); */
-
-          /* this.configuration.log().error(generalSearch);
-          this.configuration.log().error(receivedEventsFullQuery.toQuery());
-          this.configuration.log().error(await receivedEventsFullQuery);
-
-      } */
+          
+        if (eventIdentifierSearch) {
+          receivedEventsFullQuery.where('event.identifier', "=", eventIdentifierSearch as string);
+        }
+      
 
       const receivedEvents = await receivedEventsFullQuery;
       const joinedSearch = this.joinSearch(receivedEvents, 'id', 'state');
