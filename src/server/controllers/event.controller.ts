@@ -1448,7 +1448,7 @@ class EventControllers {
       const { itemsPerPage, offset, pageIndex, order } =
         controllerHelpers.getPaginationData(req);
 
-      const { systemId, fromTime, toTime, state, generalSearch } = req.query;
+      const { systemId, fromTime, toTime, state, idSearch } = req.query;
 
       const totalReceivedEventCountQuery = this.knexPool('received_event')
         .join('event', 'event.id', 'received_event.event_id')
@@ -1488,9 +1488,9 @@ class EventControllers {
         ).where('contract_exc_detail.state', "=", state as string)
       }
 
-      if (generalSearch) {
+      if (idSearch) {
         totalReceivedEventCountQuery
-        .where('received_event.id', generalSearch as string)
+        .where('received_event.id', idSearch as string)
           /* .join('system', 'system.id', 'event.system_id')
           .where((qb) => {
             if (!systemId) {
@@ -1538,8 +1538,8 @@ class EventControllers {
         const parsedSystemEvents = systemEvents.map((se) => se.id);
         receivedEventsQuery.where('event_id', 'in', parsedSystemEvents);
       }
-      if (generalSearch) {
-        receivedEventsQuery.where('received_event.id', generalSearch as string);
+      if (idSearch) {
+        receivedEventsQuery.where('received_event.id', idSearch as string);
       }
       const totalReceivedEventCount = (await totalReceivedEventCountQuery)[0][
         'count(distinct `received_event`.`id`)'
