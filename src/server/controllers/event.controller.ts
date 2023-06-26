@@ -1497,8 +1497,8 @@ class EventControllers {
         .where('received_event.id', idSearch as string);
       }
       const receivedEventsQuery = this.knexPool('received_event')
-        .limit(itemsPerPage)
         .offset(offset)
+        .limit(itemsPerPage)
         .orderBy('received_event.id', order);
 
       if (toTime) {
@@ -1523,6 +1523,9 @@ class EventControllers {
       if (idSearch) {
         receivedEventsQuery.where('received_event.id', idSearch as string);
       }
+      if (state) {
+        receivedEventsQuery.where(this.knexPool.raw("(SELECT GROUP_CONCAT(state) FROM contract_exc_detail as CED WHERE received_event.id = CED.received_event_id)"), "like", `%${state}%`)
+      }
       const totalReceivedEventCount = (await totalReceivedEventCountQuery)[0][
         'count(distinct `received_event`.`id`)'
       ];
@@ -1530,7 +1533,6 @@ class EventControllers {
       const totalPages = Math.ceil(
         parseInt(totalReceivedEventCount as string) / itemsPerPage,
       );
-
       const receivedEventsFullQuery = this.knexPool({
         received_event: receivedEventsQuery,
       } as any)
@@ -1539,31 +1541,37 @@ class EventControllers {
           'system.id as systemId',
           'event.id as eventId',
           'system.name as systemName',
-          'contract_exc_detail.state',
+          // 'contract_exc_detail.state as state',
           'system.identifier as systemIdentifier',
           'event.name as eventName',
           'event.identifier as eventIdentifier',
           'event.description as eventDescription',
           'received_request',
           'received_at as receivedAt',
+          this.knexPool.raw("(SELECT GROUP_CONCAT(state) FROM contract_exc_detail as CED WHERE received_event.id = CED.received_event_id) as state")
         )
-        .leftJoin(
+        /* .leftJoin(
           'contract_exc_detail',
           'contract_exc_detail.received_event_id',
           'received_event.id',
-        )
+        ) */
         .join('event', 'event.id', 'received_event.event_id')
         .join('system', 'system.id', 'event.system_id')
-        .orderBy('received_event.id', order);
+        .orderBy('received_event.id', order)
+        .groupBy('received_event.id');
           
-        if (eventIdentifierSearch) {
-          receivedEventsFullQuery.where('event.identifier', "=", eventIdentifierSearch as string);
-        }
-      
-
+      if (eventIdentifierSearch) {
+        receivedEventsFullQuery.where('event.identifier', "=", eventIdentifierSearch as string);
+      };
       const receivedEvents = await receivedEventsFullQuery;
-      const joinedSearch = this.joinSearch(receivedEvents, 'id', 'state');
-      let filteredData = [];
+      const finalData = receivedEvents.map(event => {
+        const arrStates = event.state?.split(",") ?? [null]
+        event.state = arrStates
+        return event;
+      })
+      
+      // const joinedSearch = this.joinSearch(receivedEvents, 'id', 'state');
+      // let filteredData = [];
       /* if (state) {
         const eventLogs = joinedSearch.filter((item) => {
           return item.state.find((eachState: string) => eachState === state)
@@ -1576,7 +1584,7 @@ class EventControllers {
         code: 200000,
         message: 'success',
         content: {
-          items: joinedSearch,
+          items: finalData,
           pageIndex,
           itemsPerPage,
           totalItems: totalReceivedEventCount,
