@@ -21,6 +21,7 @@ export interface Action {
   deleted: number;
   created_at: Date;
   updated_at: Date;
+  reply_to: string;
 }
 
 export interface ActionWithSystem extends Action{

@@ -35,7 +35,8 @@ class ActionControllers {
         securityUrl,
         clientId,
         clientSecret,
-        rawFunctionBody
+        rawFunctionBody,
+        reply_to
       } = req.body;
 
       const action = await this.knexPool
@@ -119,6 +120,7 @@ class ActionControllers {
         http_configuration: hexedInitVector + '|.|' + encryptedData,
         operation,
         description,
+        reply_to
       });
 
       let parsedSecurity = 'custom';
@@ -225,6 +227,7 @@ class ActionControllers {
           .table('action')
           .select(
             'action.id as id',
+            'action.reply_to as reply_to',
             'action.identifier',
             'action.name',
             'action.http_configuration as httpConfiguration',
@@ -240,7 +243,7 @@ class ActionControllers {
           .where('action.deleted', false)
           .andWhere('action.id', id)
       )[0];
-
+      this.configuration.log().error(action)
       if (!action) {
         return this.returnError(
           'Action does not exist',
@@ -280,6 +283,7 @@ class ActionControllers {
         deleted: action.deleted === 0 ? false : true,
         created_at: action.created_at,
         updated_at: action.updated_at,
+        reply_to: action.reply_to,
         security: {
           type: action.securityType,
           httpConfiguration: jsonAxiosBaseAuthConfig,
@@ -407,7 +411,8 @@ class ActionControllers {
         queryUrlParams,
         clientSecret,
         clientId,
-        rawFunctionBody
+        rawFunctionBody,
+        reply_to
       } = req.body;
 
       const parsedHeaders: Record<string, any> = {};
@@ -451,6 +456,7 @@ class ActionControllers {
             httpConfigurationEncrypted.hexedInitVector +
             '|.|' +
             httpConfigurationEncrypted.encryptedData,
+          reply_to
         })
         .where('id', id);
 

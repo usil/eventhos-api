@@ -151,6 +151,7 @@ class EventControllers {
    *
    * @describe Validates the recived event
    */
+// event validation internal
   eventValidation = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const systemKey = (req.query['access-key'] ||
@@ -284,6 +285,51 @@ class EventControllers {
     }
   };
 
+  eventValidationInternal = async (req: any) => {
+    const eventIdentifier = req.eventIdentifier;
+    if (!eventIdentifier) {
+      await this.sendMailToEventhosManagersOnError(
+        'There isnt event identifier',
+      );
+      return this.returnError(
+        'There isnt event identifier',
+        'There isnt event identifier',
+        400201,
+        400,
+        'eventValidationInternal',
+        () => console.error("There isnt event identifier"),
+      );
+    }
+
+    const event = (await this.knexPool
+      .select('system.client_id', 'event.identifier', 'event.id')
+      .from('event')
+      .join('system', 'system.id', 'event.system_id')
+      .first()
+      .where('event.identifier', eventIdentifier)
+      .andWhere('event.deleted', false)) as {
+        client_id: number;
+        identifier: string;
+        id: number;
+      };
+
+    if (!event) {
+      await this.sendMailToEventhosManagersOnError(
+        `The event ${eventIdentifier} does not exist.`,
+      );
+      return this.returnError(
+        `The event ${eventIdentifier} does not exist.`,
+        `The event ${eventIdentifier} does not exist.`,
+        400202,
+        400,
+        'eventValidationInternal',
+        () => console.error("There isnt event identifier"),
+      );
+    }
+
+    return event.id
+  }
+
   handleDecodeData = (
     decode: any,
     client: any,
@@ -400,10 +446,12 @@ class EventControllers {
       );
     }
   };
+
+  // TODO
   getEventContracts = async (
     req: Request,
     res: Response,
-    next: NextFunction,
+    next?: NextFunction,
   ) => {
     try {
       if (!res.locals.eventId) {
@@ -1089,8 +1137,31 @@ class EventControllers {
         ...httpConfiguration,
         timeout: getConfig().subscription.timeout,
       });
-
       await this.handleContractExecution(result, eventContract, receivedEvent);
+      
+      if(eventContract.action.reply_to) {
+        this.configuration.log().error(result.data, "---");
+        const params = {
+          eventIdentifier: eventContract.action.reply_to
+        }
+        const eventId= await this.eventValidationInternal(params);
+        const reqInternal = {
+          headers: {},
+          query: {},
+          body: result?.data,
+          method: "POST"
+        }
+
+        const resInternal = {
+          locals: {
+            eventId: eventId
+          }
+        }
+        const daa = await this.getEventContracts(reqInternal as Request, resInternal as unknown as Response)
+        this.configuration.log().error(daa, "--******--");
+
+      }
+      // kdsdjaksjfjdskjfj
       return {
         message: `Contract with id ${eventContract.contract.id} executed successfully`,
       };
