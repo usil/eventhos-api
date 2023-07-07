@@ -222,6 +222,8 @@ CREATE TABLE `action` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+
+ALTER TABLE `action` ADD COLUMN reply_to VARCHAR(100) NULL COMMENT 'is a column that references the event identifier';
 --
 -- Table structure for table `action_security`
 --

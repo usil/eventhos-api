@@ -452,6 +452,7 @@ class EventControllers {
     req: Request,
     res: Response,
     next?: NextFunction,
+    typeInvoke: string = "middleware"
   ) => {
     try {
       if (!res.locals.eventId) {
@@ -520,6 +521,9 @@ class EventControllers {
         });
       }
       res.locals.eventContracts = eventContracts;
+      if (typeInvoke !== 'middleware' ) {
+        return eventContracts;
+      }
       return next();
     } catch (error) {
       await this.sendMailToEventhosManagersOnError(error.message);
@@ -946,6 +950,8 @@ class EventControllers {
 
       return res.status(200).json({ code: 20000, message: 'success' });
     } catch (error) {
+    this.configuration.log().error(error.message)
+
       await this.sendMailToEventhosManagersOnError(error.message);
       return this.returnError(
         error.message,
@@ -1139,29 +1145,47 @@ class EventControllers {
       });
       await this.handleContractExecution(result, eventContract, receivedEvent);
       
-      if(eventContract.action.reply_to) {
-        this.configuration.log().error(result.data, "---");
-        const params = {
-          eventIdentifier: eventContract.action.reply_to
-        }
-        const eventId= await this.eventValidationInternal(params);
-        const reqInternal = {
-          headers: {},
-          query: {},
-          body: result?.data,
-          method: "POST"
-        }
-
-        const resInternal = {
-          locals: {
-            eventId: eventId
+      if(eventContract?.action?.reply_to) {
+        try {
+          const params = {
+            eventIdentifier: eventContract.action.reply_to
           }
-        }
-        const daa = await this.getEventContracts(reqInternal as Request, resInternal as unknown as Response)
-        this.configuration.log().error(daa, "--******--");
+          const eventId= await this.eventValidationInternal(params);
 
+          const reqInternal = {
+            headers: {},
+            query: {},
+            body: result?.data,
+            method: "POST",
+            protocol: "http",
+            originalUrl: "/event-identifier=" + eventContract.action.reply_to,
+            get: (param: string) => {
+              let customUrl: any = {
+                host: "localhost:" + this.configuration.port
+              }
+  
+              return customUrl[param]
+            },
+          }
+  
+          let resInternal: any = {
+            locals: {
+              eventId: eventId
+            },
+            status: () => {
+              const json = () => {
+                return "OK"
+              }
+              return {json}
+            }
+          }
+          const eventContracts = await this.getEventContracts(reqInternal as Request, resInternal as unknown as Response, () => console.log("next"), "function")
+          resInternal.locals.eventContracts = eventContracts
+          await this.manageEvent(reqInternal as Request, resInternal as Response, () => console.log("next"))
+        } catch (error) {
+          this.configuration.log().error(error.message)
+        }
       }
-      // kdsdjaksjfjdskjfj
       return {
         message: `Contract with id ${eventContract.contract.id} executed successfully`,
       };

@@ -243,7 +243,6 @@ class ActionControllers {
           .where('action.deleted', false)
           .andWhere('action.id', id)
       )[0];
-      this.configuration.log().error(action)
       if (!action) {
         return this.returnError(
           'Action does not exist',
