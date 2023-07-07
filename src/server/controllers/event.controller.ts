@@ -840,7 +840,7 @@ class EventControllers {
     }
   };
 
-  manageEvent = async (req: Request, res: Response, next: NextFunction) => {
+  manageEvent = async (req: Request, res: Response, next: NextFunction, reply_from : string | null= null) => {
     try {
       if (!res.locals.eventId || !res.locals.eventContracts) {
         await this.sendMailToEventhosManagersOnError(
@@ -926,6 +926,7 @@ class EventControllers {
           orderedContracts,
           receivedEvent,
           parsedReq,
+          reply_from
         );
       } else {
         const sendHeaders = {
@@ -978,6 +979,7 @@ class EventControllers {
         body: Record<string, any>;
       };
     },
+    reply_from: string | null = null
   ) => {
     const mergedContractExecutions: Observable<
       | {
@@ -994,7 +996,7 @@ class EventControllers {
       const contractsToExecute = orderedContracts[ocKey];
       const contractExecutions = contractsToExecute.map((eventContract) => {
         return defer(() =>
-          this.executeContract(eventContract, receivedEvent, parsedReq),
+          this.executeContract(eventContract, receivedEvent, parsedReq, reply_from),
         ).pipe(take(1));
       });
       const contractsExecution$ = merge(...contractExecutions);
@@ -1052,6 +1054,7 @@ class EventControllers {
         body: Record<string, any>;
       };
     },
+    reply_from: string|null = null
   ) => {
     const parsedHeaders: Record<string, string> = {};
     const parsedQueryParams: Record<string, string> = {};
@@ -1143,7 +1146,7 @@ class EventControllers {
         ...httpConfiguration,
         timeout: getConfig().subscription.timeout,
       });
-      await this.handleContractExecution(result, eventContract, receivedEvent);
+      await this.handleContractExecution(result, eventContract, receivedEvent, reply_from);
       
       if(eventContract?.action?.reply_to) {
         try {
@@ -1181,8 +1184,9 @@ class EventControllers {
           }
           const eventContracts = await this.getEventContracts(reqInternal as Request, resInternal as unknown as Response, () => console.log("next"), "function")
           resInternal.locals.eventContracts = eventContracts
-          await this.manageEvent(reqInternal as Request, resInternal as Response, () => console.log("next"))
+          await this.manageEvent(reqInternal as Request, resInternal as Response, () => console.log("next"), eventContract.event.identifier)
         } catch (error) {
+          this.configuration.log().error("Error while execute reply to event:")
           this.configuration.log().error(error.message)
         }
       }
@@ -1359,6 +1363,7 @@ class EventControllers {
       action_security: ActionSecurity;
     },
     receivedEvent: number[],
+    reply_from: string | null = null
   ) => {
     try {
       const excDetail = await this.knexPool
@@ -1367,6 +1372,7 @@ class EventControllers {
           contract_id: contract.contract.id,
           received_event_id: receivedEvent[0],
           state: 'processed',
+          reply_from: reply_from
         });
       const successResponse = {
         headers: res.headers,

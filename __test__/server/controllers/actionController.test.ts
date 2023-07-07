@@ -892,6 +892,7 @@ describe('Actions controller functions work', () => {
     expect(knex.table).toHaveBeenCalledWith('action');
     expect(knex.select).toHaveBeenCalledWith(
       'action.id as id',
+      'action.reply_to as reply_to',
       'action.identifier',
       'action.name',
       'action.http_configuration as httpConfiguration',
