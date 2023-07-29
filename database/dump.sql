@@ -273,6 +273,9 @@ CREATE TABLE `contract` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+alter table contract modify column mail_recipients_on_error VARCHAR(200);
+alter table contract modify column name VARCHAR(200);
+
 --
 -- Table structure for table `contract_exc_detail`
 --

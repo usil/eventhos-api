@@ -1,6 +1,6 @@
 FROM node:16
 
-WORKDIR /app
+WORKDIR /usr/src/app
 COPY package.json .
 COPY package-lock.json .
 
@@ -12,4 +12,6 @@ RUN npm run build
 EXPOSE 2109
 ENV PORT 2109
 
-ENTRYPOINT ["npm","run","start"]
+COPY DockerfileEntryPoint.sh /usr/local/bin/DockerfileEntryPoint.sh
+RUN chmod 744 /usr/local/bin/DockerfileEntryPoint.sh
+ENTRYPOINT ["DockerfileEntryPoint.sh"]

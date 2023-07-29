@@ -215,6 +215,64 @@ class ContractControllers {
     }
   };
 
+  findContractsByEventIdAndActionId = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+
+    if(!req.params){
+      const errorMessage = "event id and action id are required. Syntax: /event/:eventId/action/:actionId";
+      return this.returnError(errorMessage, errorMessage, 400100, 400, 'getContractsByEventIdAndActionId',
+        next, null,
+      );
+    }
+
+    const { eventId } = req.params;
+    const { actionId } = req.params;
+
+    if(!eventId){
+      const errorMessage = "event id is required. Syntax: /event/:eventId/action/:actionId";
+      return this.returnError(errorMessage, errorMessage, 400100, 400, 'getContractsByEventIdAndActionId',
+        next, null,
+      );
+    } 
+
+    if(!actionId){
+      const errorMessage = "action id is required. Syntax: /event/:eventId/action/:actionId";
+      return this.returnError(errorMessage, errorMessage, 400100, 400, 'getContractsByEventIdAndActionId',
+        next, null,
+      );
+    }     
+
+    try {
+
+      const contractQuery = this.knexPool
+        .table('contract')
+        .where('event_id', eventId)
+        .andWhere('action_id', actionId)
+        .orderBy('order', 'asc');
+
+      const contracts = (await contractQuery) as ContractJoined[];
+
+      return res.status(200).json({
+        code: 200000,
+        message: 'success',
+        content: contracts,
+      });
+    } catch (error) {
+      return this.returnError(
+        error.message,
+        error.message,
+        500107,
+        500,
+        'getContractsByEventIdAndActionId',
+        next,
+        error,
+      );
+    }
+  };  
+
   updateContract = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;

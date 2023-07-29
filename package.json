@@ -1,7 +1,7 @@
 {
   "name": "eventhos-api",
   "version": "1.0.1",
-  "description": "A template to use knex with mysql",
+  "description": "The api of eventhos platform",
   "main": "./dist/main.js",
   "scripts": {
     "test:windows": "cross-env USE_QUEUE=false NODE_ENV=test jest  --verbose --silent --collectCoverage  && jest-coverage-badges --output badges",
