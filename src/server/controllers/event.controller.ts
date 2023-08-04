@@ -25,6 +25,8 @@ import { nanoid } from 'nanoid';
 import fs from 'fs';
 import { promisify } from 'util';
 import MailService from '../util/Mailer';
+import qs from 'qs';
+import { prettyObjectIfIsPossible } from '../../helpers/general';
 
 const readFile = promisify(fs.readFile);
 const JavaScriptHelpers = require('../../helpers/javaScriptHelpers');
@@ -680,9 +682,19 @@ class EventControllers {
       parsedResult.request = JSON.parse(
         await this.decryptString(parsedResult.request),
       );
+
+      if(typeof parsedResult.request.body === 'string'){
+        parsedResult.request.body = prettyObjectIfIsPossible(parsedResult.request.body);
+      }
+
       parsedResult.response = JSON.parse(
         await this.decryptString(parsedResult.response),
       );
+
+      if(typeof parsedResult.response.body === 'string'){
+        parsedResult.response.body = prettyObjectIfIsPossible(parsedResult.response.body);
+      }
+
       return res.status(200).json({
         code: 200000,
         message: 'success',
@@ -1067,6 +1079,11 @@ class EventControllers {
           ),
         ) as AxiosRequestConfig;
 
+        //convert the body object to a stringified version
+        //because of spec https://datatracker.ietf.org/doc/html/rfc6749#appendix-B
+        //more details of client credentials grant, here:
+        //https://datatracker.ietf.org/doc/html/rfc6749#section-4.4
+        jsonAxiosBaseAuthConfig.data = qs.stringify(jsonAxiosBaseAuthConfig.data );
         jsonAxiosBaseAuthConfig.headers = {
           ...jsonAxiosBaseAuthConfig.headers,
           eventhosStartDate: new Date().toISOString(),

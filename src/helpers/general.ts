@@ -58,3 +58,16 @@ export const objectObfuscate = (rawSensibleParams: any, object: Record<string, a
   });
   return object;
 }
+
+/*Convert a string to json if it is json
+If not, the same string is returned*/
+export const prettyObjectIfIsPossible = (text: string) => {
+  if (!text) {
+      return text
+  }
+  try{
+    return JSON.parse(text);
+  }catch(err){
+    return text;
+  }
+}

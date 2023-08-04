@@ -10,9 +10,6 @@ function JavaScriptHelpers() {
       throw new Error("function content is required");
     }
 
-/*     console.debug(functionString);
-    console.debug(variables, ".........") */
-
     //create an array of variable names and at the end, the script
     //https://stackoverflow.com/a/4183662/3957754
     // var keys = Object.keys(variables);
@@ -21,7 +18,6 @@ function JavaScriptHelpers() {
     keys.push(functionString);
     var someJsFunction = Function.apply(null, keys);
     return await someJsFunction(variables);
-    // return await someJsFunction(...Object.values(variables));
 
   }
 

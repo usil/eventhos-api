@@ -131,10 +131,20 @@ class ActionControllers {
       };
 
       if (securityType === 1) {
+        //body is stored as object for easy modification in the ui
+        //the backend should stringify it
         securityHttpConfiguration['data'] = {
           client_id: clientId,
           client_secret: clientSecret,
           grant_type: 'client_credentials',
+          response_type: 'token'
+        };
+        //we follow the spec
+        //https://datatracker.ietf.org/doc/html/rfc6749#appendix-B
+        //more details of client credentials grant, here:
+        //https://datatracker.ietf.org/doc/html/rfc6749#section-4.4   
+        securityHttpConfiguration['headers'] = {
+          'content-type': "application/x-www-form-urlencoded"
         };
         parsedSecurity = 'oauth2_client';
       }
@@ -467,10 +477,20 @@ class ActionControllers {
       };
 
       if (securityType === 1) {
+        //body is stored as object for easy modification in the ui
+        //the backend should stringify it
         securityHttpConfiguration['data'] = {
           client_id: clientId,
           client_secret: clientSecret,
           grant_type: 'client_credentials',
+          response_type: 'token'
+        };
+        //we follow the spec
+        //https://datatracker.ietf.org/doc/html/rfc6749#appendix-B
+        //more details of client credentials grant, here:
+        //https://datatracker.ietf.org/doc/html/rfc6749#section-4.4     
+        securityHttpConfiguration['headers'] = {
+          'content-type': "application/x-www-form-urlencoded"
         };
         parsedSecurity = 'oauth2_client';
       }
