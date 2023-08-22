@@ -137,17 +137,21 @@ class ContractControllers {
         .orderBy('contract.id', order);
         
       if (wordSearch) {
-        contractQuery.andWhere("contract.name", 'like', '%' + wordSearch + '%')
+        contractQuery.andWhere(function () {
+          this.where("contract.name", 'like', '%' + wordSearch + '%')
           .orWhere("producerSystem.name", 'like', '%' + wordSearch + '%')
           .orWhere("event.identifier", 'like', '%' + wordSearch + '%')
           .orWhere("consumerSystem.name", 'like', '%' + wordSearch + '%')
           .orWhere("action.identifier", 'like', '%' + wordSearch + '%');
+        });
         // in jest test not working
-        totalContractCountQuery.andWhere("contract.name", 'like', '%' + wordSearch + '%')
+        totalContractCountQuery.andWhere(function () {
+          this.where("contract.name", 'like', '%' + wordSearch + '%')
           .orWhere("producerSystem.name", 'like', '%' + wordSearch + '%')
           .orWhere("event.identifier", 'like', '%' + wordSearch + '%')
           .orWhere("consumerSystem.name", 'like', '%' + wordSearch + '%')
           .orWhere("action.identifier", 'like', '%' + wordSearch + '%');
+        });
       }
       const contracts = (await contractQuery) as ContractJoined[];
 
@@ -250,6 +254,7 @@ class ContractControllers {
       const contractQuery = this.knexPool
         .table('contract')
         .where('event_id', eventId)
+        .where('deleted', false)
         .andWhere('action_id', actionId)
         .orderBy('order', 'asc');
 
