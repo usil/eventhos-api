@@ -188,6 +188,7 @@ describe('Event routes work accordingly', () => {
           revoked: true,
           identifier: 'new_profesor',
           id: 1,
+          client_id: "foo"
         },
       ]);
 
@@ -206,8 +207,8 @@ describe('Event routes work accordingly', () => {
       );
 
       expect(eventControllers.returnError).toHaveBeenCalledWith(
-        'The client access has been revoked.',
-        'The client access has been revoked.',
+        `The client access has been revoked: id: 1  client_id: foo`,
+        `The client access has been revoked: id: 1  client_id: foo`,
         403201,
         403,
         'eventValidation',

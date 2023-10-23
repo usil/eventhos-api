@@ -223,11 +223,11 @@ class EventControllers {
 
       if (client.revoked) {
         await this.sendMailToEventhosManagersOnError(
-          `The client access has been revoked.`,
+          `The client access has been revoked: id: ${client.id}  client_id: ${client.client_id}`,
         );
         return this.returnError(
-          `The client access has been revoked.`,
-          `The client access has been revoked.`,
+          `The client access has been revoked: id: ${client.id}  client_id: ${client.client_id}`,
+          `The client access has been revoked: id: ${client.id}  client_id: ${client.client_id}`,
           403201,
           403,
           'eventValidation',
