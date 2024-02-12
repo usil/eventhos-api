@@ -110,6 +110,10 @@ Once the application is running you can either use the eventhos platform (recomm
 ## Configurations
 [Advanced configurations](https://github.com/usil/eventhos-api/wiki/for-developers#advanced-configurations)
 
+## Contributions
+
+Check this https://github.com/usil/eventhos-api/wiki/Contributions
+
 
 ## License
 

@@ -161,9 +161,7 @@ class EventControllers {
       const eventIdentifier = req.query['event-identifier'] as string;
 
       if (!systemKey || !eventIdentifier) {
-        await this.sendMailToEventhosManagersOnError(
-          'Either the access key or the identifier for the event was not send.',
-        );
+        this.configuration.log().error('Either the access key or the identifier for the event was not send.')
         return this.returnError(
           'Either the access key or the identifier for the event was not send.',
           'Either the access key or the identifier for the event was not send.',
@@ -187,9 +185,7 @@ class EventControllers {
         };
 
       if (!event) {
-        await this.sendMailToEventhosManagersOnError(
-          `The event ${eventIdentifier} does not exist.`,
-        );
+        this.configuration.log().error(`The event ${eventIdentifier} does not exist.`);
         return this.returnError(
           `The event ${eventIdentifier} does not exist.`,
           `The event ${eventIdentifier} does not exist.`,
@@ -210,7 +206,8 @@ class EventControllers {
       
 
       if (!client) {
-        await this.sendMailToEventhosManagersOnError(`The client does not exist.`);
+        this.configuration.log().error(`The client ${event.client_id} does not exist.`);
+        this.configuration.log().error(req.headers);
         return this.returnError(
           `The client does not exist.`,
           `The client does not exist.`,
@@ -222,9 +219,8 @@ class EventControllers {
       }
 
       if (client.revoked) {
-        await this.sendMailToEventhosManagersOnError(
-          `The client access has been revoked: id: ${client.id}  client_id: ${client.client_id}`,
-        );
+        this.configuration.log().error(`The client access has been revoked: id: ${client.id}  client_id: ${client.client_id}`);
+        this.configuration.log().error(req.headers);
         return this.returnError(
           `The client access has been revoked: id: ${client.id}  client_id: ${client.client_id}`,
           `The client access has been revoked: id: ${client.id}  client_id: ${client.client_id}`,
@@ -244,7 +240,7 @@ class EventControllers {
           res.locals.eventId = event.id;
           return next();
         }
-        await this.sendMailToEventhosManagersOnError(`Incorrect token`);
+        this.configuration.log().error(`Incorrect token. Not matches with the stored. Related client ${event.client_id}`);
         return this.returnError(
           'Incorrect token',
           'Incorrect token',
@@ -260,7 +256,7 @@ class EventControllers {
         getConfig().oauth2.jwtSecret,
         async (err: any, decode: any) => {
           if (err) {
-            await this.sendMailToEventhosManagersOnError(`Incorrect token`);
+            this.configuration.log().error(err);
             return this.returnError(
               'Incorrect token',
               'Incorrect token',
@@ -274,7 +270,7 @@ class EventControllers {
         },
       );
     } catch (error) {      
-      await this.sendMailToEventhosManagersOnError(error.message);
+      this.configuration.log().error(error);
       return this.returnError(
         error.message,
         error.message,
@@ -290,12 +286,10 @@ class EventControllers {
   eventValidationInternal = async (req: any) => {
     const eventIdentifier = req.eventIdentifier;
     if (!eventIdentifier) {
-      await this.sendMailToEventhosManagersOnError(
-        'There isnt event identifier',
-      );
+      this.configuration.log().error('There isnt event identifier');
       return this.returnError(
-        'There isnt event identifier',
-        'There isnt event identifier',
+        'There is not event identifier',
+        'There is not event identifier',
         400201,
         400,
         'eventValidationInternal',
@@ -316,9 +310,7 @@ class EventControllers {
       };
 
     if (!event) {
-      await this.sendMailToEventhosManagersOnError(
-        `The event ${eventIdentifier} does not exist.`,
-      );
+      this.configuration.log().error(`The event ${eventIdentifier} does not exist.`);
       return this.returnError(
         `The event ${eventIdentifier} does not exist.`,
         `The event ${eventIdentifier} does not exist.`,
@@ -372,7 +364,7 @@ class EventControllers {
       const contractDetailId = req.body['contractDetailId'];
       const receivedEventId = req.body['receivedEventId'];
       if (!res.locals.eventId) {
-        await this.sendMailToEventhosManagersOnError('Event Id was not send.');
+        this.configuration.log().error('Event Id was not send.');
         return this.returnError(
           'Event Id was not send.',
           'Event Id was not send.',
@@ -383,9 +375,7 @@ class EventControllers {
         );
       }
       if (!receivedEventId) {
-        await this.sendMailToEventhosManagersOnError(
-          'Received event Id was not send.',
-        );
+        this.configuration.log().error('Received event Id was not send.');
         return this.returnError(
           'Received event Id was not send.',
           'Received event Id was not send.',
@@ -396,9 +386,7 @@ class EventControllers {
         );
       }
       if (!contractDetailId) {
-        await this.sendMailToEventhosManagersOnError(
-          'Contract detail Id was not send.',
-        );
+        this.configuration.log().error('Contract detail Id was not send.');
         return this.returnError(
           'Contract detail Id was not send.',
           'Contract detail Id was not send.',
@@ -436,7 +424,7 @@ class EventControllers {
 
       return next();
     } catch (error) {
-      await this.sendMailToEventhosManagersOnError(error.message);
+      this.configuration.log().error(error);
       return this.returnError(
         error.message,
         error.message,
@@ -458,7 +446,7 @@ class EventControllers {
   ) => {
     try {
       if (!res.locals.eventId) {
-        await this.sendMailToEventhosManagersOnError('Event Id was not send');
+        this.configuration.log().error('Event Id was not send');
         return this.returnError(
           'Event Id was not send.',
           'Event Id was not send.',
@@ -528,7 +516,7 @@ class EventControllers {
       }
       return next();
     } catch (error) {
-      await this.sendMailToEventhosManagersOnError(error.message);
+      this.configuration.log().error(error.message);
       return this.returnError(
         error.message,
         error.message,
@@ -728,9 +716,7 @@ class EventControllers {
         !res.locals.eventContract ||
         !res.locals.contractDetailId
       ) {
-        await this.sendMailToEventhosManagersOnError(
-          'Event Id or Event Contract List was not send.',
-        );
+        this.configuration.log().error('Event Id or Event Contract List was not send.');
         return this.returnError(
           'Event Id or Event Contract List was not send.',
           'Event Id or Event Contract List was not send.',
@@ -742,7 +728,7 @@ class EventControllers {
       }
 
       if (isNaN(res.locals.eventId)) {
-        await this.sendMailToEventhosManagersOnError('Event Id is not a number.');
+        this.configuration.log().error('Event Id is not a number.');
         return this.returnError(
           'Event Id is not a number.',
           'Event Id is not a number.',
@@ -754,9 +740,7 @@ class EventControllers {
       }
 
       if (!res.locals.eventContract) {
-        await this.sendMailToEventhosManagersOnError(
-          'Event Contract is not an array',
-        );
+        this.configuration.log().error('Event Contract is not an array');
         return this.returnError(
           'Event Contract is not an array.',
           'Event Contract is not an array.',
@@ -806,9 +790,7 @@ class EventControllers {
         .where('is_aborted', 0);
 
       if (!contractExcDetailExist || !contractExcTryExist) {
-        await this.sendMailToEventhosManagersOnError(
-          'Detail of the contract does not exist or has already been processed',
-        );
+        this.configuration.log().error('Detail of the contract does not exist or has already been processed');
         return this.returnError(
           'Detail of the contract does not exist or has already been processed',
           'Detail of the contract does not exist or has already been processed',
@@ -839,7 +821,7 @@ class EventControllers {
 
       return res.status(200).json({ code: 20000, message: 'success' });
     } catch (error) {
-      await this.sendMailToEventhosManagersOnError(error.message);
+      this.configuration.log().error(error);
       return this.returnError(
         error.message,
         error.message,
@@ -855,9 +837,7 @@ class EventControllers {
   manageEvent = async (req: Request, res: Response, next: NextFunction, reply_from : string | null= null) => {
     try {
       if (!res.locals.eventId || !res.locals.eventContracts) {
-        await this.sendMailToEventhosManagersOnError(
-          'Event Id or Event Contract List was not send.',
-        );
+        this.configuration.log().error('Event Id or Event Contract List was not send.');
         return this.returnError(
           'Event Id or Event Contract List was not send.',
           'Event Id or Event Contract List was not send.',
@@ -869,7 +849,7 @@ class EventControllers {
       }
 
       if (isNaN(res.locals.eventId)) {
-        await this.sendMailToEventhosManagersOnError('Event Id is not a number');
+        this.configuration.log().error('Event Id is not a number');
         return this.returnError(
           'Event Id is not a number.',
           'Event Id is not a number.',
@@ -881,9 +861,7 @@ class EventControllers {
       }
 
       if (!res.locals.eventContracts.length) {
-        await this.sendMailToEventhosManagersOnError(
-          'Event Contracts is not an array',
-        );
+        this.configuration.log().error('Event Contracts is not an array');
         return this.returnError(
           'Event Contract is not an array.',
           'Event Contract is not an array.',
@@ -963,9 +941,7 @@ class EventControllers {
 
       return res.status(200).json({ code: 20000, message: 'success' });
     } catch (error) {
-    this.configuration.log().error(error.message)
-
-      await this.sendMailToEventhosManagersOnError(error.message);
+      this.configuration.log().error(error)
       return this.returnError(
         error.message,
         error.message,
