@@ -12,6 +12,7 @@ import knex, { Knex } from 'knex';
 import { getConfig } from '../../config/main.config';
 import OauthBoot from 'nodeboot-oauth2-starter';
 import { v4 as uuidv4 } from 'uuid';
+import bodyParser from 'body-parser';
 /**
  *
  * @description Use this class to create and serve an application
@@ -109,7 +110,8 @@ class ServerInitialization
     this.app.use(helmet());
     this.app.use(compression());
     this.app.use(cors());
-    this.app.use(express.json());
+    this.app.use(express.json({limit: this.configuration.server.httpBodySizeLimit}));
+    this.app.use(bodyParser.json({limit: this.configuration.server.httpBodySizeLimit}));
     this.app.use(express.urlencoded({ extended: true }));
     this.app.obGet('/', ':', this.healthEndpoint);
   }
@@ -136,6 +138,7 @@ class ServerInitialization
       onLibrary?: string;
       onFile?: string;
       logMessage?: string;
+      path?: string;
       errorObject?: Record<string, any>;
     },
     _req: Request,
@@ -143,6 +146,10 @@ class ServerInitialization
     _next: NextFunction,
   ) => {
     const uudid = uuidv4();
+    let error = new Error();
+    this.configuration
+      .log()
+      .error(error);
     this.configuration
       .log()
       .error(uudid, '-', err.logMessage || err.message, { ...err });
@@ -150,6 +157,7 @@ class ServerInitialization
       message: err.message,
       code: err.errorCode || 500000,
       errorUUID: uudid,
+      path: err?.path,
     });
   };
 

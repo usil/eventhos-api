@@ -72,20 +72,40 @@ class ContractControllers {
       const { itemsPerPage, offset, pageIndex, order } =
         controllerHelpers.getPaginationData(req);
 
-      const totalContractCount = (
-        await this.knexPool('contract').where('deleted', false).count()
-      )[0]['count(*)'];
+      const { wordSearch } = req.query;
+      
+      const totalContractCountQuery =  this.knexPool
+      .table('contract')
+      .select(
+        'contract.id',
+        'contract.name',
+        'contract.active',
+        'contract.order',
+        'event.id as eventId',
+        'action.id as actionId',
+        'producerSystem.name as producerName',
+        'consumerSystem.name as consumerName',
+        'event.identifier as eventIdentifier',
+        'action.identifier as actionIdentifier',
+        'mail_recipients_on_error as mailRecipientsOnError',
+      )
+      .join('action', `contract.action_id`, 'action.id')
+      .join('event', `contract.event_id`, 'event.id')
+      .join(
+        'system as producerSystem',
+        `producerSystem.id`,
+        'event.system_id',
+      )
+      .join(
+        'system as consumerSystem',
+        `consumerSystem.id`,
+        'action.system_id',
+      )
+      .where('contract.deleted', false)
+      .count();
 
-      const totalPages = Math.ceil(
-        parseInt(totalContractCount as string) / itemsPerPage,
-      );
-
-      const contractQuery = this.knexPool({
-        contract: this.knexPool('contract')
-          .limit(itemsPerPage)
-          .offset(offset)
-          .orderBy('contract.id', order),
-      } as any)
+      const contractQuery = this.knexPool
+        .table('contract')
         .select(
           'contract.id',
           'contract.name',
@@ -111,9 +131,36 @@ class ContractControllers {
           `consumerSystem.id`,
           'action.system_id',
         )
-        .where('contract.deleted', false);
-
+        .where('contract.deleted', false)
+        .limit(itemsPerPage)
+        .offset(offset)
+        .orderBy('contract.id', order);
+        
+      if (wordSearch) {
+        contractQuery.andWhere(function () {
+          this.where("contract.name", 'like', '%' + wordSearch + '%')
+          .orWhere("producerSystem.name", 'like', '%' + wordSearch + '%')
+          .orWhere("event.identifier", 'like', '%' + wordSearch + '%')
+          .orWhere("consumerSystem.name", 'like', '%' + wordSearch + '%')
+          .orWhere("action.identifier", 'like', '%' + wordSearch + '%');
+        });
+        // in jest test not working
+        totalContractCountQuery.andWhere(function () {
+          this.where("contract.name", 'like', '%' + wordSearch + '%')
+          .orWhere("producerSystem.name", 'like', '%' + wordSearch + '%')
+          .orWhere("event.identifier", 'like', '%' + wordSearch + '%')
+          .orWhere("consumerSystem.name", 'like', '%' + wordSearch + '%')
+          .orWhere("action.identifier", 'like', '%' + wordSearch + '%');
+        });
+      }
       const contracts = (await contractQuery) as ContractJoined[];
+
+      const totalContractCount = (await totalContractCountQuery)[0]['count(*)'];
+
+      const totalPages = Math.ceil(
+        parseInt(totalContractCount as string) / itemsPerPage,
+      );
+
 
       return res.status(200).json({
         code: 200000,
@@ -171,6 +218,65 @@ class ContractControllers {
       );
     }
   };
+
+  findContractsByEventIdAndActionId = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+
+    if(!req.params){
+      const errorMessage = "event id and action id are required. Syntax: /event/:eventId/action/:actionId";
+      return this.returnError(errorMessage, errorMessage, 400100, 400, 'getContractsByEventIdAndActionId',
+        next, null,
+      );
+    }
+
+    const { eventId } = req.params;
+    const { actionId } = req.params;
+
+    if(!eventId){
+      const errorMessage = "event id is required. Syntax: /event/:eventId/action/:actionId";
+      return this.returnError(errorMessage, errorMessage, 400100, 400, 'getContractsByEventIdAndActionId',
+        next, null,
+      );
+    } 
+
+    if(!actionId){
+      const errorMessage = "action id is required. Syntax: /event/:eventId/action/:actionId";
+      return this.returnError(errorMessage, errorMessage, 400100, 400, 'getContractsByEventIdAndActionId',
+        next, null,
+      );
+    }     
+
+    try {
+
+      const contractQuery = this.knexPool
+        .table('contract')
+        .where('event_id', eventId)
+        .where('deleted', false)
+        .andWhere('action_id', actionId)
+        .orderBy('order', 'asc');
+
+      const contracts = (await contractQuery) as ContractJoined[];
+
+      return res.status(200).json({
+        code: 200000,
+        message: 'success',
+        content: contracts,
+      });
+    } catch (error) {
+      return this.returnError(
+        error.message,
+        error.message,
+        500107,
+        500,
+        'getContractsByEventIdAndActionId',
+        next,
+        error,
+      );
+    }
+  };  
 
   updateContract = async (req: Request, res: Response, next: NextFunction) => {
     try {

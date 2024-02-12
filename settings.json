@@ -26,6 +26,9 @@
   "encryption": {
     "key": "${CRYPTO_KEY}"
   },
+  "server": {
+    "httpBodySizeLimit": "${HTTP_BODY_SIZE_LIMIT}"
+  },
   "queue": {
     "active": "${USE_QUEUE}",
     "host": "${QUEUE_HOST}",
@@ -35,5 +38,17 @@
     "password": "${QUEUE_PASSWORD}",
     "destination": "${QUEUE_DESTINATION}",
     "heartBeat": "${QUEUE_HEART_BEAT}"
+  },
+  "smtp": {
+    "subjectMode": "${ENVIRONMENT_ALIAS}",
+    "rawSensibleParams": "${RAW_SENSIBLE_PARAMS}",
+    "host": "${SMTP_HOST}",
+    "port": "${SMTP_PORT}",
+    "enableSSL":"${SMTP_ENABLE_SSL}", 
+    "tlsCiphers": "${SMTP_TLS_CIPHERS}",
+    "user": "${SMTP_CREDENTIAL_USER}",
+    "password": "${SMTP_CREDENTIAL_PASSWORD}",
+    "alias": "${SMTP_FROM_ALIAS}",
+    "defaultRecipients": "${SMTP_DEFAULT_RECIPIENT}"
   }
 }

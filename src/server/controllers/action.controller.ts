@@ -4,7 +4,7 @@ import { Knex } from 'knex';
 import { getConfig } from '../../../config/main.config';
 import crypto from 'crypto';
 import controllerHelpers from './helpers/controller-helpers';
-import { Action } from '../dtos/eventhosInterface';
+import { Action, ActionWithSystem } from '../dtos/eventhosInterface';
 import { AxiosRequestConfig } from 'axios';
 import ErrorForNext from './helpers/ErrorForNext';
 import { nanoid } from 'nanoid';
@@ -35,6 +35,8 @@ class ActionControllers {
         securityUrl,
         clientId,
         clientSecret,
+        rawFunctionBody,
+        reply_to
       } = req.body;
 
       const action = await this.knexPool
@@ -63,7 +65,7 @@ class ActionControllers {
         parsedHeaders[header.key] = header.value;
       }
 
-      if (!rawBody) {
+      if (!rawBody && !rawFunctionBody) {
         for (const b of body as {
           key: string;
           value: string | number;
@@ -87,6 +89,7 @@ class ActionControllers {
         headers: parsedHeaders,
         data: parsedBody,
         params: parsedQueryUrlParams,
+        rawFunctionBody : rawFunctionBody
       };
 
       const stringedHttpConfiguration = JSON.stringify(httpConfiguration);
@@ -117,6 +120,7 @@ class ActionControllers {
         http_configuration: hexedInitVector + '|.|' + encryptedData,
         operation,
         description,
+        reply_to
       });
 
       let parsedSecurity = 'custom';
@@ -127,10 +131,20 @@ class ActionControllers {
       };
 
       if (securityType === 1) {
+        //body is stored as object for easy modification in the ui
+        //the backend should stringify it
         securityHttpConfiguration['data'] = {
           client_id: clientId,
           client_secret: clientSecret,
           grant_type: 'client_credentials',
+          response_type: 'token'
+        };
+        //we follow the spec
+        //https://datatracker.ietf.org/doc/html/rfc6749#appendix-B
+        //more details of client credentials grant, here:
+        //https://datatracker.ietf.org/doc/html/rfc6749#section-4.4   
+        securityHttpConfiguration['headers'] = {
+          'content-type': "application/x-www-form-urlencoded"
         };
         parsedSecurity = 'oauth2_client';
       }
@@ -223,6 +237,7 @@ class ActionControllers {
           .table('action')
           .select(
             'action.id as id',
+            'action.reply_to as reply_to',
             'action.identifier',
             'action.name',
             'action.http_configuration as httpConfiguration',
@@ -238,7 +253,6 @@ class ActionControllers {
           .where('action.deleted', false)
           .andWhere('action.id', id)
       )[0];
-
       if (!action) {
         return this.returnError(
           'Action does not exist',
@@ -278,6 +292,7 @@ class ActionControllers {
         deleted: action.deleted === 0 ? false : true,
         created_at: action.created_at,
         updated_at: action.updated_at,
+        reply_to: action.reply_to,
         security: {
           type: action.securityType,
           httpConfiguration: jsonAxiosBaseAuthConfig,
@@ -304,25 +319,49 @@ class ActionControllers {
 
   getActions = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const { wordSearch } = req.query;
       const { itemsPerPage, offset, pageIndex, order, activeSort } =
         controllerHelpers.getPaginationData(req);
 
-      const totalActionsCount = (
-        await this.knexPool.table('action').where('deleted', false).count()
-      )[0]['count(*)'];
+      const totalActionsCountQuery = 
+        this.knexPool
+          .table('action')
+          .select(
+            "action.*", 
+            "system.name as system_name"
+          )
+          .join("system", "action.system_id", "system.id")
+          .where('action.deleted', false)
+          .count();
+      
+      const actionsQuery = this.knexPool
+        .table('action')
+        .select(
+          "action.*", 
+          "system.name as system_name"
+        )
+        .join("system", "action.system_id", "system.id")
+        .offset(offset)
+        .limit(itemsPerPage)
+        .where('action.deleted', false)
+        .orderBy('action.id', order);
 
+      if (wordSearch) {
+        totalActionsCountQuery.andWhere('action.name', 'like', '%' + wordSearch + '%')
+        .orWhere('action.description', 'like', '%' + wordSearch + '%')
+        .orWhere('system.name', 'like', '%' + wordSearch + '%');
+
+        actionsQuery.andWhere('action.name', 'like', '%' + wordSearch + '%')
+        .orWhere('action.description', 'like', '%' + wordSearch + '%')
+        .orWhere('system.name', 'like', '%' + wordSearch + '%');
+
+      }
+
+      const totalActionsCount = (await totalActionsCountQuery)[0]['count(*)'];
       const totalPages = Math.ceil(
         parseInt(totalActionsCount as string) / itemsPerPage,
       );
-
-      const actionsQuery = this.knexPool
-        .table('action')
-        .offset(offset)
-        .limit(itemsPerPage)
-        .where('deleted', false)
-        .orderBy(activeSort, order);
-
-      const systems = (await actionsQuery) as Action[];
+      const systems = (await actionsQuery) as ActionWithSystem[];
 
       return res.status(200).json({
         code: 200000,
@@ -381,6 +420,8 @@ class ActionControllers {
         queryUrlParams,
         clientSecret,
         clientId,
+        rawFunctionBody,
+        reply_to
       } = req.body;
 
       const parsedHeaders: Record<string, any> = {};
@@ -406,6 +447,7 @@ class ActionControllers {
         headers: parsedHeaders,
         data: rawBody,
         params: parsedQueryUrlParams,
+        rawFunctionBody : rawFunctionBody
       };
       const stringedHttpConfiguration = JSON.stringify(httpConfiguration);
 
@@ -423,6 +465,7 @@ class ActionControllers {
             httpConfigurationEncrypted.hexedInitVector +
             '|.|' +
             httpConfigurationEncrypted.encryptedData,
+          reply_to
         })
         .where('id', id);
 
@@ -434,10 +477,20 @@ class ActionControllers {
       };
 
       if (securityType === 1) {
+        //body is stored as object for easy modification in the ui
+        //the backend should stringify it
         securityHttpConfiguration['data'] = {
           client_id: clientId,
           client_secret: clientSecret,
           grant_type: 'client_credentials',
+          response_type: 'token'
+        };
+        //we follow the spec
+        //https://datatracker.ietf.org/doc/html/rfc6749#appendix-B
+        //more details of client credentials grant, here:
+        //https://datatracker.ietf.org/doc/html/rfc6749#section-4.4     
+        securityHttpConfiguration['headers'] = {
+          'content-type': "application/x-www-form-urlencoded"
         };
         parsedSecurity = 'oauth2_client';
       }

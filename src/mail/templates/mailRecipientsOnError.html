@@ -7,90 +7,91 @@ table {
   border-collapse: collapse;
   width: 100%;
 }
-
 td, th {
   border: 1px solid #dddddd;
   text-align: left;
   padding: 8px;
 }
-
 .headerTd {
     width: 100px;
 }
-
 tr:nth-child(even) {
   background-color: #dddddd;
+}
+.contentData {
+    word-break: break-all
 }
 </style>
 </head>
 <body>
+    <h3>Executed contract</h3>
     <table>
         <tr>
             <td class="headerTd">Contract</td>
-            <td>@contract</td>
+            <td class="contentData">@contract</td>
         </tr>
         <tr>
             <td class="headerTd">When</td>
-            <td>@when</td>
+            <td class="contentData">@when</td>
         </tr>
         <tr>
             <td class="headerTd">In</td>
-            <td>@inWhen</td>
+            <td class="contentData">@inWhen</td>
         </tr>
         <tr>
             <td class="headerTd">Then</td>
-            <td>@then</td>
+            <td class="contentData">@then</td>
         </tr>
         <tr>
             <td class="headerTd">In</td>
-            <td>@inThen</td>
+            <td class="contentData">@inThen</td>
         </tr>
     </table>
-
-    <h3>Event Details</h3>
+    <h3>Received Event - Request Details</h3>
     <table>
         <tr>
+            <td class="headerTd">Event log Identifier</td>
+            <td class="contentData">@eventLogIdentifier</td>
+        </tr>
+        <tr>
             <td class="headerTd">timestamp</td>
-            <td>@timestampEvent</td>
+            <td class="contentData">@timestampEvent</td>
         </tr>
         <tr>
             <td class="headerTd">Url</td>
-            <td>@urlEvent</td>
+            <td class="contentData">@urlEvent</td>
         </tr>
         <tr>
             <td class="headerTd">Body</td>
-            <td>@bodyEvent</td>
+            <td class="contentData">@bodyEvent</td>
         </tr>
         <tr>
             <td class="headerTd">Headers</td>
-            <td>@headersEvent</td>
+            <td class="contentData">@headersEvent</td>
         </tr>
     </table>
-
-    <h3>Subscriber Response</h3>
+    <h3>Executed Action - Response Details</h3>
     <table>
         <tr>
             <td class="headerTd">timestamp</td>
-            <td>@timestampSubscriber</td>
+            <td class="contentData">@timestampSubscriber</td>
         </tr>
         <tr>
             <td class="headerTd">Url</td>
-            <td>@urlSubscriber</td>
+            <td class="contentData">@urlSubscriber</td>
         </tr>
         <tr>
             <td class="headerTd">Http Status</td>
-            <td>@httpStatusSubscriber</td>
+            <td class="contentData">@httpStatusSubscriber</td>
         </tr>
         <tr>
             <td class="headerTd">Body</td>
-            <td>@bodySubscriber</td>
+            <td class="contentData">@bodySubscriber</td>
         </tr>
         <tr>
             <td class="headerTd">Headers</td>
-            <td>@headersSubscriber</td>
+            <td class="contentData">@headersSubscriber</td>
         </tr>
     </table>
-
 </body>
 </html>
-

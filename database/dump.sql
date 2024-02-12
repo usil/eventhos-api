@@ -222,6 +222,8 @@ CREATE TABLE `action` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+
+ALTER TABLE `action` ADD COLUMN reply_to VARCHAR(100) NULL COMMENT 'is a column that references the event identifier';
 --
 -- Table structure for table `action_security`
 --
@@ -271,6 +273,9 @@ CREATE TABLE `contract` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+alter table contract modify column mail_recipients_on_error VARCHAR(200);
+alter table contract modify column name VARCHAR(200);
+
 --
 -- Table structure for table `contract_exc_detail`
 --
@@ -294,6 +299,7 @@ CREATE TABLE `contract_exc_detail` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+ALTER TABLE `contract_exc_detail` ADD COLUMN reply_from VARCHAR(100) NULL COMMENT 'is a column that references the event identifier was invoke';
 --
 -- Table structure for table `contract_exc_try`
 --

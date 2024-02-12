@@ -441,11 +441,14 @@ describe('Actions controller functions work', () => {
 
     const knex = {
       table: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
+      join: jest.fn().mockReturnThis(),
       offset: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockResolvedValue([{ id: 1 }]),
       count: jest.fn().mockResolvedValue([{ 'count(*)': 8 }]),
+      andWhere: jest.fn().mockReturnThis()
     } as any as Knex;
 
     const totalPages = Math.ceil(parseInt('8' as string) / 10);
@@ -458,9 +461,13 @@ describe('Actions controller functions work', () => {
 
     expect(knex.table).toHaveBeenCalledWith('action');
     expect(knex.offset).toHaveBeenCalledWith(0);
-    expect(knex.where).toHaveBeenCalledWith('deleted', false);
+    expect(knex.where).toHaveBeenCalledWith('action.deleted', false);
+    expect(knex.join).toHaveBeenCalledWith(
+      "system", "action.system_id", "system.id"
+    );
     expect(knex.count).toHaveBeenCalled();
     expect(knex.limit).toHaveBeenCalledWith(10);
+    expect(knex.andWhere).not.toHaveBeenCalled();
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
@@ -468,6 +475,7 @@ describe('Actions controller functions work', () => {
       message: 'success',
       content: {
         items: [{ id: 1 }],
+
         pageIndex: 0,
         itemsPerPage: 10,
         totalItems: 8,
@@ -475,6 +483,39 @@ describe('Actions controller functions work', () => {
       },
     });
   });
+
+  it.skip('Get actions works with word to search', async () => {
+    const req = {
+      query: {
+        itemsPerPage: 10,
+        offset: 10,
+        pageIndex: 0,
+        order: 'desc',
+        activeSort: 'id',
+        wordSearch: "name"
+      },
+    } as any as Request;
+
+    const res = mockRes();
+
+    const knex = {
+      table: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      count: jest.fn().mockReturnThis(),
+      offset: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+    } as any as Knex;
+
+    const actionController = new ActionController(knex);
+
+    await actionController.getActions(req, res, mockNext);
+
+    expect(knex.table).toHaveBeenCalledWith('action');
+    expect(knex.limit).toHaveBeenCalledWith(10);
+
+  })
 
   it('Get actions fails', async () => {
     const req = {
@@ -851,6 +892,7 @@ describe('Actions controller functions work', () => {
     expect(knex.table).toHaveBeenCalledWith('action');
     expect(knex.select).toHaveBeenCalledWith(
       'action.id as id',
+      'action.reply_to as reply_to',
       'action.identifier',
       'action.name',
       'action.http_configuration as httpConfiguration',

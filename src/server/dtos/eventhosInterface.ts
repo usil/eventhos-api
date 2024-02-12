@@ -21,7 +21,13 @@ export interface Action {
   deleted: number;
   created_at: Date;
   updated_at: Date;
+  reply_to: string;
 }
+
+export interface ActionWithSystem extends Action{
+  system_name: string
+}
+
 
 export interface Contract {
   id: number;

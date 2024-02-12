@@ -145,9 +145,12 @@ describe('Contract controller works', () => {
     const res = mockRes();
 
     const knex = {
+      table: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
       join: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orWhere: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
       offset: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockResolvedValue([{ id: 1 }]),
@@ -156,7 +159,7 @@ describe('Contract controller works', () => {
 
     const knexFunction = jest.fn().mockReturnValue(knex);
 
-    const contractController = new ContractController(knexFunction as any);
+    const contractController = new ContractController(knex);
 
     await contractController.getContracts(req, res, mockNext);
 
@@ -174,10 +177,79 @@ describe('Contract controller works', () => {
       'action.identifier as actionIdentifier',
       'mail_recipients_on_error as mailRecipientsOnError',
     );
-    expect(knex.where).toHaveBeenCalledWith('deleted', false);
+    expect(knex.where).toHaveBeenCalledWith('contract.deleted', false);
     expect(knex.count).toHaveBeenCalled();
     expect(knex.limit).toHaveBeenCalledWith(10);
+    expect(knex.table).toHaveBeenCalledTimes(2);
 
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalled();
+  });
+
+  it.skip('Get contracts works with word to search', async () => {
+    const req = {
+      query: {
+        itemsPerPage: 10,
+        pageIndex: 0,
+        order: 'desc',
+        activeSort: 'id',
+        wordSearch: 'word'
+      },
+    } as any as Request;
+
+    const res = mockRes();
+
+    const knex = {
+      table: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      join: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orWhere: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      offset: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockResolvedValue([{ id: 1 }]),
+      count: jest.fn().mockResolvedValue([{ 'count(*)': 8 }]),
+    } as any as Knex;
+
+    const contractController = new ContractController(knex);
+    await contractController.getContracts(req, res, mockNext);
+
+    expect(knex.offset).toHaveBeenCalledWith(0);
+    expect(knex.select).toHaveBeenCalledWith(
+      'contract.id',
+      'contract.name',
+      'contract.active',
+      'contract.order',
+      'event.id as eventId',
+      'action.id as actionId',
+      'producerSystem.name as producerName',
+      'consumerSystem.name as consumerName',
+      'event.identifier as eventIdentifier',
+      'action.identifier as actionIdentifier',
+      'mail_recipients_on_error as mailRecipientsOnError',
+    );
+    expect(knex.select).toHaveBeenCalledWith(
+      'contract.id',
+      'contract.name',
+      'contract.active',
+      'contract.order',
+      'event.id as eventId',
+      'action.id as actionId',
+      'producerSystem.name as producerName',
+      'consumerSystem.name as consumerName',
+      'event.identifier as eventIdentifier',
+      'action.identifier as actionIdentifier',
+      'mail_recipients_on_error as mailRecipientsOnError',
+    );
+    expect(knex.table).toHaveBeenCalledTimes(2)
+    expect(knex.where).toHaveBeenCalledWith('contract.deleted', false);
+    expect(knex.andWhere).toHaveBeenCalledTimes(1)
+
+    expect(knex.limit).toHaveBeenCalledWith(10);
+    expect(knex.select).toHaveBeenCalledTimes(2);
+
+    // try mock variable into function
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalled();
   });
