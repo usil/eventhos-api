@@ -27,6 +27,7 @@ export class ConfigGlobalDto {
     acquireConnectionTimeout: number;
     poolMax: number;
     poolMin: number;
+    timezone: string;
   };
   subscription: {
     timeout: number;

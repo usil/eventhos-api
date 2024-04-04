@@ -14,7 +14,8 @@
     "password": "${DATA_BASE_PASSWORD}",
     "acquireConnectionTimeout": "${DATA_BASE_ACQUIRE_CONNECTION_TIMEOUT}",
     "poolMax": "${DATA_BASE_POOL_MAX}",
-    "poolMin": "${DATA_BASE_POOL_MIN}"
+    "poolMin": "${DATA_BASE_POOL_MIN}",
+    "timezone": "${DATA_BASE_TIMEZONE}"
   },
   "subscription": {
     "timeout": 70000

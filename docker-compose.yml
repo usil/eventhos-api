@@ -57,9 +57,22 @@ services:
         limits:
           memory: 1024M
     healthcheck:
-      test: 'cat /var/log/mysql/general-log.log | grep "root@localhost on  using Socket"'
-      interval: 10s
-      retries: 120
+        test: ["CMD", 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-p$$MYSQL_PASSWORD' ]
+        timeout: 20s
+        retries: 10
+
+  fake-smtp-server:
+    image: haravich/fake-smtp-server:1.0.1
+    container_name: fake-smtp-server
+    ports:
+      - '1025:1025'
+      - '1080:1080'
+    environment:
+      TZ: America/Lima
+    deploy:
+      resources:
+        limits:
+          memory: 512M              
 
 networks:
   app_network:
