@@ -7,15 +7,27 @@
 
 ## What is eventhos?
 
-Eventhos is an open source platform that some principles of Event Driven Architectures to improve the integration or choreography between company systems.
+Eventhos is an open source platform that applies event-driven architecture principles to allow the user to orchestrate their system integrations using a simple user interface instead of complicated publisher and subscriber source codes in applications. You only need webhooks and rest APIs to integrate all your systems.
 
 Here a minimalist High Level Diagram
 
 ![](https://www.planttext.com/api/plantuml/png/LOv13e0W30JlVGNXpXSCFp556Y11CBJgzyM3YhVjP9fTou9DzZL3eqMmX4oA3f9OUSOjAMIb-rrkO3hGm58RXiywoVsj3ZHu57J8f9u0eszQ2b7CD5R1MFiAxxkbullC2m00)
 
-To take a deep look into how eventhos works check the [documentation](https://github.com/usil/eventhos/wiki).
-
 In this repository you will find the code of the artifact called **eventhos-api**
+
+## Demo
+
+To build and start this platform you need knowledge about nodejs and mysql. To get your own version in less than 3 minutes, follow this guide:
+
+https://github.com/usil/eventhos?tab=readme-ov-file#usage-get-last-stable-version-default-secrets
+
+If you don't have errors, you will be able to perform a get request to `http://localhost:2109`. You should see `ok` as response.
+
+## Technologies
+
+- Nodejs
+- Knex
+- Mysql
 
 ## Requirements
 
@@ -26,41 +38,39 @@ In this repository you will find the code of the artifact called **eventhos-api*
 
 Following the [third commandment](https://12factor.net/config) we use environment variables to handle the configurations
 
-| Variable                             | Description                                    | Default Value |
+| Variable                             | Description                                    | Sample Value |
 | :----------------------------------- | :--------------------------------------------- | :------------ |
-| DATA_BASE_NAME                       | The eventhos platform database name            | eventhos      |
-| DATA_BASE_HOST                       | The eventhos platform database host            | localhost     |
-| DATA_BASE_PORT                       | The eventhos platform database port            | 3306          |
-| DATA_BASE_USER                       | The eventhos platform database user            | usr_eventhos  |
-| DATA_BASE_PASSWORD                   | The eventhos platform database password        | abcdefg       |
-| CPU_COUNT                            | How many cpu cores use                         | 1             |
-| PORT                                 | The application port                           | 2109          |
-| JWT_SECRET                           | The secret for the JWT creation                | secret        |
-| CRYPTO_KEY                           | The secret key to encrypt                      | secret_key    |
-| DATA_BASE_ACQUIRE_CONNECTION_TIMEOUT | The timeout to acquire a connection using knex | 10000         |
-| DATA_BASE_POOL_MIN                   | The minimum knex connection pool               | 100           |
-| DATA_BASE_POOL_MAX                   | The maximum knex connection pool               | 300           |
-| SMTP_HOST                   | Sender identifier               |           |
-| SMTP_PORT                   | Communication endpoint that defines the routing of email transactions               |           |
-| SMTP_CREDENTIAL_USER                   | User of your mail server               |            |
-| SMTP_CREDENTIAL_PASSWORD                   | Password of your mail server               |           |
-| SMTP_ENABLE_SSL                   | Encrypt. <br> If your host is for gmail, your value should be true. <br> If your host is for office 365, your value should be false               | true           |
-| SMTP_TLS_CIPHERS                   | Are algorithms that help secure network connections that use Transport Layer Security               |    SSLv3        |
-| SMTP_DEFAULT_RECIPIENT                   | Default recipients if there aren't recipients in a contract or if there are error before event's send               |            |
-| SMTP_FROM_ALIAS                   | Should be able equal to the value of SMTP_CREDENTIAL_USER           |            |
-| LOG_FILE_PATH                        | Use a file for the logs                        | false         |
-| LOG_LEVEL                            | Set the logger level                           | debug         |
-| RAW_SENSIBLE_PARAMS                          | Names of the keys that have sensitive values ​​sent when executing an event. <br>The values ​​of the keys sent here will be hidden. <br> Example: event-key, access-key, newkey                           |          |
-| HTTP_BODY_SIZE_LIMIT     |   Supported size of the json that interacts with the app   | 50mb         |
-| ENVIRONMENT_ALIAS     |    The value that you declare in this variable will be seen in the subject on email error report, example: dev,prod,et.        |
+| CPU_COUNT | How many cpu cores use | 1|
+| CRYPTO_KEY | The secret key to encrypt | secret_key |
+| DATA_BASE_ACQUIRE_CONNECTION_TIMEOUT | The timeout to acquire a connection using knex | 10000 |
+| DATA_BASE_HOST | The eventhos platform database host | localhost |
+| DATA_BASE_NAME | The eventhos platform database name | eventhos |
+| DATA_BASE_PASSWORD | The eventhos platform database password | abcdefg |
+| DATA_BASE_POOL_MAX | The maximum knex connection pool | 300 |
+| DATA_BASE_POOL_MIN | The minimum knex connection pool | 100 |
+| DATA_BASE_PORT | The eventhos platform database port | 3306|
+| DATA_BASE_TIMEZONE | Required to sync the datetime in mysql2 nodejs library | +00:00  |
+| DATA_BASE_USER | The eventhos platform database user | usr_eventhos  |
+| ENVIRONMENT_ALIAS | Used in the subject on email error report, example: dev,prod,et. | Test|
+| HTTP_BODY_SIZE_LIMIT |   Supported size of the json that interacts with the app   | 50mb|
+| JWT_SECRET | The secret for the JWT | secret|
+| LOG_FILE_PATH | Use a file for the logs | false|
+| LOG_LEVEL | Set the logger level | debug|
+| PORT | The application port | 2109 |
+| RAW_SENSIBLE_PARAMS | Word to be obfuscated in mails and ui| credit_card, address |
+| SMTP_CREDENTIAL_PASSWORD | Password of your mail server | changeme |
+| SMTP_CREDENTIAL_USER | User of your mail server | noreply@acme.com  |
+| SMTP_DEFAULT_RECIPIENT | Default recipients if there aren't recipients in a contract or if there are error before event's send| jane@acme.com|
+| SMTP_ENABLE_SSL | Encrypt. <br> If your host is for gmail, your value should be true. <br> If your host is for office 365, your value should be false| true|
+| SMTP_FROM_ALIAS | Should be able equal to the value of SMTP_CREDENTIAL_USER | noreply@acme.com or custom if your smtp allow it |
+| SMTP_HOST | Sender identifier | smtp.gmail.com |
+| SMTP_PORT | Communication endpoint that defines the routing of email transactions | 587|
+| SMTP_TLS_CIPHERS | Are algorithms that help secure network connections that use Transport Layer Security | SSLv3 |
+| TZ | Os timezone | America/Lima |
 
 
 To use these variables in your developer workspace, check [this](https://github.com/usil/eventhos-api/wiki/for-developers)
 
-
-## Database
-
-Eventhos works with a mysql database using knex, you should pass your database information in the environment variables.
 
 ## Security
 
@@ -96,21 +106,24 @@ npm run start
 ```
 By default the app runs in the 2109 port.
 
+Also you can use docker following [this](https://github.com/usil/eventhos-api/wiki/deployment_docker) guide
+
 ## Usage
 
-Once the application is running you can either use the eventhos platform (recommended) or use the endpoints that this api has.
+For correct easy operation, the [ui](https://github.com/usil/eventhos-web) is required. 
+
+Once the application is running you can either use the eventhos UI (recommended) or use the rest endpoints whic are documented [here](https://github.com/usil/eventhos-api/wiki) in the section **Endpoints**
 
 ## Developed libraries
 
+Keeping in mind that software should be reused, we have developed the following libraries to build **eventhos-api**
+
 | name | url | branch | description |
 | -----| --- | -------| ----------- |
-| advanced-settings | https://github.com/nodeboot/advanced-settings | main  | - |
-| nodeboot-oauth2-starter | https://github.com/usil/nodeboot-oauth2-starter#fix-validator-middleware | fix-validator-middleware | - |
+| advanced-settings | https://github.com/nodeboot/advanced-settings | main  | use env variables in the json settings |
+| nodeboot-oauth2-starter | https://github.com/usil/nodeboot-oauth2-starter#fix-validator-middleware | 1.0.1 | oauth2 autonconfigure database and endpoints |
 
-## Configurations
-[Advanced configurations](https://github.com/usil/eventhos-api/wiki/for-developers#advanced-configurations)
-
-## Contributions
+## How to Contribute
 
 Check this https://github.com/usil/eventhos-api/wiki/Contributions
 

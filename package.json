@@ -15,7 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "@types/jest": "^27.5.2",
-    "advanced-settings": "git+https://github.com/nodeboot/advanced-settings.git",
+    "advanced-settings": "github:nodeboot/advanced-settings",
     "axios": "^0.24.0",
     "bcrypt": "^5.0.1",
     "body-parser": "^1.20.2",
@@ -33,7 +33,7 @@
     "log4js": "^6.4.7",
     "mysql2": "^2.3.3",
     "nanoid": "^3.3.4",
-    "nodeboot-oauth2-starter": "github:usil/nodeboot-oauth2-starter#1.0.1",
+    "nodeboot-oauth2-starter": "github:usil/nodeboot-oauth2-starter",
     "nodemailer": "^6.8.0",
     "rxjs": "^7.4.0",
     "smtp-tester": "^2.0.1",
