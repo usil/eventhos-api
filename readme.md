@@ -13,9 +13,17 @@ Here a minimalist High Level Diagram
 
 ![](https://www.planttext.com/api/plantuml/png/LOv13e0W30JlVGNXpXSCFp556Y11CBJgzyM3YhVjP9fTou9DzZL3eqMmX4oA3f9OUSOjAMIb-rrkO3hGm58RXiywoVsj3ZHu57J8f9u0eszQ2b7CD5R1MFiAxxkbullC2m00)
 
-In this repository you will find the code of the artifact called **eventhos-api**
+## How it works?
+
+Basically you have to identify the producers (webhooks) and consumers (apis). Then using th UI you can make a contract between the incoming event produced by a webhook (source system) to the rest api in in the target system. So with this you will have a real time integration between the producer and consumer systems without the complexity of kafka or similars.
+
+![image](https://github.com/usil/eventhos/assets/3322836/2fafd3ab-5ad0-4cd8-a413-78caa15069a2)
+
+More uses cases and deep explanation [here](https://github.com/usil/eventhos/wiki/Real-Use-Cases) and [here](https://github.com/usil/eventhos-web/wiki/SendEvent)
 
 ## Demo
+
+> In this repository you will find the code of the web artifact called **eventhos-api**. You will need the [api](https://github.com/usil/eventhos-web) to get all the eventhos platform ready to use or develop
 
 To build and start this platform you need knowledge about nodejs and mysql. To get your own version in less than 3 minutes, follow this guide:
 
