@@ -75,6 +75,7 @@ class ServerInitialization
    * @description Adds the necessary knexjs configuration
    */
   addKnexjsConfig(): void {
+
     const knexConfig = {
       client: 'mysql2',
       version: '5.7',
@@ -84,6 +85,7 @@ class ServerInitialization
         user: this.configuration.dataBase.user,
         password: this.configuration.dataBase.password,
         database: this.configuration.dataBase.name,
+        timezone: this.configuration.dataBase.timezone
       },
       acquireConnectionTimeout:
         this.configuration.dataBase.acquireConnectionTimeout,

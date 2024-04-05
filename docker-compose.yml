@@ -1,65 +1,98 @@
 version: '3.7'
 services:
+
+  eventhos-db:
+    build:
+      context: ./docker/mysql-mod
+      dockerfile: Dockerfile
+    image: mysql-mod:5.7
+    container_name: eventhos-db
+    command: mysqld --sql_mode="" --max_connections=1100 --general-log=1 --general-log-file=/tmp/mysql-general-log.log
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./database/latest:/docker-entrypoint-initdb.d
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-changeme}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-changeme}
+      MYSQL_USER: "usr_eventhos"
+      MYSQL_DATABASE: "eventhos"
+      TZ: America/Lima
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      test: 'cat /tmp/mysql-general-log.log | grep "[MYSQL_READY]"'
+      interval: 10s
+      retries: 120
+
   eventhos-api:
     build: .
     container_name: eventhos-api
     ports:
-      - '2109:2109'
+      - "${EVENTHOS_API_PORT:-2109}:2109"
     environment:
-      NODE_ENV: "production"
       CPU_COUNT: 1
-      PORT: 2109      
-      DATA_BASE_NAME: "eventhos"
+      CRYPTO_KEY: ${CRYPTO_KEY:-changeme}
+      DATA_BASE_ACQUIRE_CONNECTION_TIMEOUT: 10000
       DATA_BASE_HOST: host.docker.internal
-      DATA_BASE_PORT: 3306
-      DATA_BASE_USER: "usr_eventhos"
+      DATA_BASE_NAME: "eventhos"
       DATA_BASE_PASSWORD: ${MYSQL_PASSWORD:-changeme}
       DATA_BASE_POOL_MAX: 300
       DATA_BASE_POOL_MIN: 100
-      DATA_BASE_ACQUIRE_CONNECTION_TIMEOUT: 10000
+      DATA_BASE_PORT: 3306
+      DATA_BASE_TIMEZONE: "+00:00"
+      DATA_BASE_USER: "usr_eventhos"
+      ENVIRONMENT_ALIAS: Integration      
       JWT_SECRET: ${JWT_SECRET:-changeme}
-      CRYPTO_KEY: ${CRYPTO_KEY:-changeme}
-      SMTP_HOST: ${SMTP_HOST:-changeme}
-      SMTP_PORT: ${SMTP_PORT:-changeme}
-      SMTP_CREDENTIAL_USER: ${SMTP_CREDENTIAL_USER:-changeme}
-      SMTP_CREDENTIAL_PASSWORD: ${SMTP_CREDENTIAL_PASSWORD:-changeme}
-      SMTP_ENABLE_SSL: "true"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      NODE_ENV: "production"
+      PORT: 2109
+      RAW_SENSIBLE_PARAMS: access-key,authorization
+      SMTP_CREDENTIAL_PASSWORD: changeme
+      SMTP_CREDENTIAL_USER: admin@mail.com
+      SMTP_DEFAULT_RECIPIENT: jane@mail.com
+      SMTP_ENABLE_SSL: false
+      SMTP_FROM_ALIAS: admin
+      SMTP_HOST: host.docker.internal
+      SMTP_PORT: 1025
       SMTP_TLS_CIPHERS: SSLv3
-      SMTP_DEFAULT_RECIPIENT: ${SMTP_DEFAULT_RECIPIENT:-changeme}
       TZ: America/Lima
+    healthcheck:
+      test: curl --fail http://localhost:2109 || exit 1
+      interval: 10s
+      retries: 100
+      start_period: 20s
+      timeout: 10s
     depends_on:
       eventhos-db:
         condition: service_healthy
+      fake-smtp-server:
+        condition: service_healthy        
     networks:
       - app_network
     extra_hosts:
-      - 'host.docker.internal:host-gateway'
+      - "host.docker.internal:host-gateway"
     deploy:
       resources:
         limits:
-          memory: 1024M
-  eventhos-db:
-    image: mysql:5.7
-    command: mysqld --sql_mode="" --general-log=1 --general-log-file=/var/log/mysql/general-log.log
-    container_name: eventhos-db
+          memory: 512M
+
+
+  fake-smtp-server:
+    image: haravich/fake-smtp-server:1.0.1
+    container_name: fake-smtp-server
     ports:
-      - '3306:3306'
-    volumes:
-      - ./database:/docker-entrypoint-initdb.d
+      - '1025:1025'
+      - '1080:1080'
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-changeme}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-changeme}
-      MYSQL_USER: 'usr_eventhos'
-      MYSQL_DATABASE: 'eventhos'
       TZ: America/Lima
     deploy:
       resources:
         limits:
-          memory: 1024M
-    healthcheck:
-      test: 'cat /var/log/mysql/general-log.log | grep "root@localhost on  using Socket"'
-      interval: 10s
-      retries: 120
+          memory: 512M              
 
 networks:
   app_network:

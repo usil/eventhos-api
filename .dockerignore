@@ -5,3 +5,5 @@ Dockerfile
 .gitignore
 dist
 coverage
+database
+docker/*
