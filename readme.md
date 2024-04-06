@@ -9,9 +9,7 @@
 
 Eventhos is an open source platform that applies event-driven architecture principles to allow the user to orchestrate their system integrations using a simple user interface instead of complicated publisher and subscriber source codes in applications. You only need webhooks and rest APIs to integrate all your systems.
 
-Here a minimalist High Level Diagram
-
-![](https://www.planttext.com/api/plantuml/png/LOv13e0W30JlVGNXpXSCFp556Y11CBJgzyM3YhVjP9fTou9DzZL3eqMmX4oA3f9OUSOjAMIb-rrkO3hGm58RXiywoVsj3ZHu57J8f9u0eszQ2b7CD5R1MFiAxxkbullC2m00)
+Full details in the [wiki](https://github.com/usil/eventhos/wiki)
 
 ## How it works?
 
@@ -19,14 +17,18 @@ Basically you have to identify the producers (webhooks) and consumers (apis). Th
 
 ![image](https://github.com/usil/eventhos/assets/3322836/2fafd3ab-5ad0-4cd8-a413-78caa15069a2)
 
+Here a sample of contract between producers and consumers
+
+https://github.com/usil/eventhos/assets/3322836/ae8cc37a-b2d5-4a65-ad1f-d853271ed2aa
+
 More uses cases and deep explanation [here](https://github.com/usil/eventhos/wiki/Real-Use-Cases) and [here](https://github.com/usil/eventhos-web/wiki/SendEvent)
 
 ## Features
 
 - Register all systems (producers and  consumers)
 - Create contracts between your systems
-- Ouath2 Security
-- Manuel retry  on error
+- Oauth2 Security
+- Manual retry  on error
 - Event Dashboard to see the received events and all the details (request/response)
 - Reply-To option
 - Json binding to match between the webhook json and target api json
@@ -36,13 +38,24 @@ More uses cases and deep explanation [here](https://github.com/usil/eventhos/wik
 
 More details [here](https://github.com/usil/eventhos/wiki/Features)
 
+## Dependencies
+
+Here a minimalist High Level Diagram
+
+![](https://www.planttext.com/api/plantuml/png/LOv13e0W30JlVGNXpXSCFp556Y11CBJgzyM3YhVjP9fTou9DzZL3eqMmX4oA3f9OUSOjAMIb-rrkO3hGm58RXiywoVsj3ZHu57J8f9u0eszQ2b7CD5R1MFiAxxkbullC2m00)
+
+To know more about each dependency check their git repositories.
+
+- [eventhos-api](https://github.com/usil/eventhos-api)
+- [eventhos-web](https://github.com/usil/eventhos-web)
+
 ## Demo
 
 > In this repository you will find the code of the web artifact called **eventhos-api**. You will need the [api](https://github.com/usil/eventhos-web) to get all the eventhos platform ready to use or develop
 
 To build and start this platform you need knowledge about nodejs and mysql. To get your own version in less than 3 minutes, follow this guide:
 
-https://github.com/usil/eventhos?tab=readme-ov-file#usage-get-last-stable-version-default-secrets
+- https://github.com/usil/eventhos?tab=readme-ov-file#get-last-stable-version
 
 If you don't have errors, you will be able to perform a get request to `http://localhost:2109`. You should see `ok` as response.
 
@@ -145,6 +158,15 @@ Keeping in mind that software should be reused, we have developed the following 
 | -----| --- | -------| ----------- |
 | advanced-settings | https://github.com/nodeboot/advanced-settings | main  | use env variables in the json settings |
 | nodeboot-oauth2-starter | https://github.com/usil/nodeboot-oauth2-starter#fix-validator-middleware | 1.0.1 | oauth2 autonconfigure database and endpoints |
+
+## Integration tests
+
+If you startup the local [demo](https://github.com/usil/eventhos?tab=readme-ov-file#get-last-stable-version) you can run the integration and e2e tests.
+
+We use docker, selenium and a mock api to test almost all the ui forms and rest api endpoints. Check this for more details:
+
+- https://github.com/usil/eventhos-integration-tests?tab=readme-ov-file#steps-for-linux
+
 
 ## How to Contribute
 
